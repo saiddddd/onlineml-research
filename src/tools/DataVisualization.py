@@ -74,6 +74,9 @@ class TrendPlot:
         except IndexError:
             traceback.print_exception()
 
+    def show(self):
+        plt.show()
+
 
     def save_fig(self, title=None, x_label='data list sequence', y_label='unnamed data'):
         plt.title(title)
