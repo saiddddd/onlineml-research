@@ -9,6 +9,9 @@ from tools.DataPreparation import AirlineDataPreparation
 from ModelExperimentWorkflow import ModelSklearnWorkflow, ModelRiverOnlineMLWorkflow
 
 
+#--------------------------#
+# Initialization of models #
+#--------------------------#
 model_sklearn = RandomForestClassifier(
         n_estimators=50,
         # criterion="entropy",
@@ -22,12 +25,31 @@ model_riverml_AdaRF = ensemble.AdaptiveRandomForestClassifier(
     seed=0,
 )
 
-
+#------------------------------------------------------#
+# create the list for storing accuracy testing results #
+#------------------------------------------------------#
 summary_acc_sklearn = []
-summary_acc_riverml_HTC = []
-summary_acc_riverml_AdaRF = []
+summary_acc_sklearn_mean = []
+summary_acc_sklearn_error = []
 
+summary_acc_riverml_HTC = []
+summary_acc_riverml_HTC_mean = []
+summary_acc_riverml_HTC_error = []
+
+summary_acc_riverml_AdaRF = []
+summary_acc_riverml_AdaRF_mean = []
+summary_acc_riverml_AdaRF_error = []
+
+#----------------------------------------------------------#
+# Starting the loop for randomly sampling training dataset #
+#----------------------------------------------------------#
 for i in range(3):
+
+    x_text_point = []
+    acc_result_sklearn = []
+    acc_result_riverml_HTC = []
+    acc_result_riverml_AdaRF = []
+
     ## create model experiment workflow
     exp_flow_sklearn = ModelSklearnWorkflow(AirlineDataPreparation(), random_seed=i)
     exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
@@ -37,82 +59,92 @@ for i in range(3):
     exp_flow_riverml_HTC.set_model(model_riverml_HTC)
     exp_flow_riverml_AdaRF.set_model(model_riverml_AdaRF)
 
-    exp_flow_sklearn.train_model_by_arbitrary_full_data(1, 501)
-    exp_flow_riverml_HTC.train_model_by_arbitrary_full_data(1, 501)
-    exp_flow_riverml_AdaRF.train_model_by_arbitrary_full_data(1, 501)
+    #---------------------------------------------------------------#
+    # Build up the dictionary for storing model experimental object #
+    # The following work will iterate this dictionary               #
+    # Taking the individual workflow object to do corresponding job #
+    #---------------------------------------------------------------#
+    exp_flow_dict = {'sklearn':
+                         {'workflow': exp_flow_sklearn,
+                          'inter_run_acc':acc_result_sklearn,
+                          'summary_acc':summary_acc_sklearn,
+                          'summary_acc_mean':summary_acc_sklearn_mean,
+                          'summary_acc_error':summary_acc_sklearn_error},
+                     'river_htc':
+                         {'workflow':exp_flow_riverml_HTC,
+                          'inter_run_acc':acc_result_riverml_HTC,
+                          'summary_acc':summary_acc_riverml_HTC,
+                          'summary_acc_mean':summary_acc_riverml_HTC_mean,
+                          'summary_acc_error':summary_acc_riverml_HTC_error},
+                     'river_adarf':
+                         {'workflow':exp_flow_riverml_AdaRF,
+                          'inter_run_acc':acc_result_riverml_AdaRF,
+                          'summary_acc':summary_acc_riverml_AdaRF,
+                          'summary_acc_mean':summary_acc_riverml_AdaRF_mean,
+                          'summary_acc_error':summary_acc_riverml_AdaRF_mean}
+                     }
 
-    exp_flow_sklearn.incremental_prediction(501, 2001)
-    exp_flow_riverml_HTC.incremental_prediction(501, 2001)
-    exp_flow_riverml_AdaRF.incremental_prediction(501, 2001)
+    #---------------------------------#
+    # first train and initial predict #
+    #---------------------------------#
+    for exp in exp_flow_dict.values():
+        exp['workflow'].train_model_by_arbitrary_split_train_data(1, 501)
+        exp['workflow'].incremental_prediction(501, 2001)
+
+    #--------------------------------------------------------------------#
+    # Simulating the streaming workflow for following step               #
+    # defined the start point and the size of one step,                  #
+    # how many #data move forward in the next step(for this start point) #
+    #--------------------------------------------------------------------#
     i_start = 2001
     i_size = 100
     i_step = 100
-
-    x_text_point = []
-    acc_result_sklearn = []
-    acc_result_riverml_HTC = []
-    acc_result_riverml_AdaRF = []
-
     while(True):
 
         x_text_point.append(i_start + 0.5 * i_size)
 
-        # sklearn one step operation
-        exp_flow_sklearn.incremental_prediction(i_start, i_start + i_size)
-        acc, recall = exp_flow_sklearn.incremental_evaluate_model_get_accuracy_recall()
-        acc_result_sklearn.append(acc)
+        #--------------------------------------------#
+        # To do incremental prediction in this step  #
+        # Appending the accuracy result in this step #
+        #--------------------------------------------#
+        for exp in exp_flow_dict.values():
+            exp['workflow'].incremental_prediction(i_start, i_start + i_size)
+            acc, recall = exp['workflow'].incremental_evaluate_model_get_accuracy_recall()
+            exp['inter_run_acc'].append(acc)
 
-        # riverml one step operation
-        exp_flow_riverml_HTC.incremental_prediction(i_start, i_start + i_size)
-        acc, recall = exp_flow_riverml_HTC.incremental_evaluate_model_get_accuracy_recall()
-        acc_result_riverml_HTC.append(acc)
-        exp_flow_riverml_HTC.train_model_by_arbitrary_full_data(i_start, i_start + i_size, is_reset_mode=False)
-
-        #riverml adaptive random forest one step operation
-        exp_flow_riverml_AdaRF.incremental_prediction(i_start, i_start + i_size)
-        acc, recall = exp_flow_riverml_AdaRF.incremental_evaluate_model_get_accuracy_recall()
-        acc_result_riverml_AdaRF.append(acc)
-        exp_flow_riverml_AdaRF.train_model_by_arbitrary_full_data(i_start, i_start + i_size, is_reset_mode=False)
+        #--------------------------------------------------------------#
+        # For online ml model, to learn more from this coming new data #
+        #--------------------------------------------------------------#
+        exp_flow_dict.get('river_htc')['workflow'].train_model_by_arbitrary_split_train_data(i_start, i_start + i_size, is_reset_mode=False)
+        exp_flow_dict.get('river_adarf')['workflow'].train_model_by_arbitrary_split_train_data(i_start, i_start + i_size, is_reset_mode=False)
 
         i_start+=i_step
 
         if i_start > 5000:
             break
-    summary_acc_sklearn.append(acc_result_sklearn)
-    summary_acc_riverml_HTC.append(acc_result_riverml_HTC)
-    summary_acc_riverml_AdaRF.append(acc_result_riverml_AdaRF)
 
-summary_acc_sklearn = np.array(summary_acc_sklearn).T.tolist()
-summary_acc_riverml_HTC = np.array(summary_acc_riverml_HTC).T.tolist()
-summary_acc_riverml_AdaRF = np.array(summary_acc_riverml_AdaRF).T.tolist()
+    #-----------------------------------------------------------#
+    # Appending the inter_run accuracy result into summary list #
+    #-----------------------------------------------------------#
+    for exp in exp_flow_dict.values():
+        exp['summary_acc'].append(exp['inter_run_acc'])
 
-summary_acc_sklearn_mean = [statistics.mean(i) for i in summary_acc_sklearn]
-summary_acc_sklearn_error = [statistics.stdev(i) for i in summary_acc_sklearn]
-
-summary_acc_riverml_HTC_mean = [statistics.mean(i) for i in summary_acc_riverml_HTC]
-summary_acc_riverml_HTC_error = [statistics.stdev(i) for i in summary_acc_riverml_HTC]
-
-summary_acc_riverml_AdaRF_mean = [statistics.mean(i) for i in summary_acc_riverml_AdaRF]
-summary_acc_riverml_AdaRF_error = [statistics.stdev(i) for i in summary_acc_riverml_AdaRF]
+#--------------------------------------#
+# Calculating mean value and std error #
+#--------------------------------------#
+for exp in exp_flow_dict.values():
+    exp['summary_acc'] = np.array(exp['summary_acc']).T.tolist()
+    exp['summary_acc_mean'] = [statistics.mean(i)*100 for i in exp['summary_acc']]
+    exp['summary_acc_error'] = [statistics.stdev(i)*100 for i in exp['summary_acc']]
 
 x_text_point = [i * 0.0001 for i in x_text_point]
-summary_acc_sklearn_mean = [i * 100 for i in summary_acc_sklearn_mean]
-summary_acc_riverml_HTC_mean = [i * 100 for i in summary_acc_riverml_HTC_mean]
-summary_acc_riverml_AdaRF_mean = [i * 100 for i in summary_acc_riverml_AdaRF_mean]
-
-summary_acc_sklearn_error = [i * 100 for i in summary_acc_sklearn_error]
-summary_acc_riverml_HTC_error = [i * 100 for i in summary_acc_riverml_HTC_error]
-summary_acc_riverml_AdaRF_error = [i * 100 for i in summary_acc_riverml_AdaRF_error]
-
-# print(x_text_point)
-# print(acc_result_sklearn)
 
 from tools.DataVisualization import TrendPlot
 
 aaa = TrendPlot()
-aaa.plot_trend_with_error_band(x_text_point, summary_acc_sklearn_mean, y_err=summary_acc_sklearn_error, label='scikit learn RF')
-aaa.plot_trend_with_error_band(x_text_point, summary_acc_riverml_HTC_mean, y_err=summary_acc_riverml_HTC_error, label='HT classifier')
-aaa.plot_trend_with_error_band(x_text_point, summary_acc_riverml_AdaRF_mean, y_err=summary_acc_riverml_AdaRF_error, label='Adaptive RF')
+aaa.plot_trend_with_error_band(x_text_point, exp_flow_dict.get('sklearn')['summary_acc_mean'], y_err=exp_flow_dict.get('sklearn')['summary_acc_error'], label='scikit learn RF')
+aaa.plot_trend_with_error_band(x_text_point, exp_flow_dict.get('river_htc')['summary_acc_mean'], y_err=exp_flow_dict.get('river_htc')['summary_acc_error'], label='HT classifier')
+aaa.plot_trend_with_error_band(x_text_point, exp_flow_dict.get('river_adarf')['summary_acc_mean'], y_err=exp_flow_dict.get('river_adarf')['summary_acc_error'], label='Adaptive RF')
 aaa.save_fig(
     title='Trend plot of Incremental ML model performance',
     x_label='#data accumulated x10000',
