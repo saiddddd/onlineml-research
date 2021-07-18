@@ -14,7 +14,7 @@ from ModelExperimentWorkflow import ModelSklearnWorkflow, ModelRiverOnlineMLWork
 #--------------------------#
 model_sklearn = RandomForestClassifier(
         n_estimators=50,
-        # criterion="entropy",
+        criterion="entropy",
         max_depth=10,
         random_state=42
     )
@@ -120,7 +120,7 @@ for i in range(3):
 
         i_start+=i_step
 
-        if i_start > 5000:
+        if i_start > 70000:
             break
 
     #-----------------------------------------------------------#
