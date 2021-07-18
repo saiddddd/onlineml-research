@@ -77,15 +77,23 @@ class ModelExperimentWorkflow(ABC):
         pass
 
     @abstractmethod
-    def train_model_by_arbitrary_data(self):
+    def train_model_by_arbitrary_full_data(self):
         pass
 
     @abstractmethod
-    def batch_pred_test_dataset(self) -> list:
+    def train_model_by_arbitrary_split_train_data(self):
         pass
 
     @abstractmethod
-    def arbitrary_pred(self,start_row, end_row) -> (list, list):
+    def batch_pred_test_dataset(self) -> (list, list):
+        """
+        batch testing on split test dataset,
+        :return: predict result and target ground true.
+        """
+        pass
+
+    @abstractmethod
+    def batch_pred_arbitrary_full_data(self, start_row, end_row) -> (list, list):
         """
         predict subset data restricted between start_row, and end_row
         return predict result and target ground true back to control flow for evaluation
@@ -126,15 +134,7 @@ class ModelExperimentWorkflow(ABC):
             if pred_result[i] == test_target[i]:
                 correct_cnt += 1
 
-        # print("Total Testing Data: {}".format(len(test_target)))
-        # print("Total correct predict: {}".format(correct_cnt))
-        # print("Total Target events: ", str(target_cnt))
-        # print("Predict Target events: ", str(pred_target_cnt))
-        # print("Picked Up Target events: ", str(pickup_target_cnt))
-
         print("Acc: {:.2f}".format(correct_cnt / len(test_target) * 100))
-        # print("Target recall rate: {:.2f} %".format(pickup_target_cnt / target_cnt * 100))
-
         return correct_cnt / len(test_target), pickup_target_cnt / target_cnt
 
     def incremental_evaluate_model_get_accuracy_recall(self):
@@ -154,14 +154,7 @@ class ModelExperimentWorkflow(ABC):
             if self._inc_tot_pred_result[i] == test_target[i]:
                 correct_cnt += 1
 
-        # print("Total Testing Data: {}".format(len(test_target)))
-        # print("Total correct predict: {}".format(correct_cnt))
-        # print("Total Target events: ", str(target_cnt))
-        # print("Predict Target events: ", str(pred_target_cnt))
-        # print("Picked Up Target events: ", str(pickup_target_cnt))
-
         print("Acc: {:.2f}".format(correct_cnt / len(test_target) * 100))
-        # print("Target recall rate: {:.2f} %".format(pickup_target_cnt / target_cnt * 100))
         return correct_cnt / len(test_target), pickup_target_cnt / target_cnt
 
     def get_model_type(self):
@@ -188,6 +181,18 @@ class ModelExperimentWorkflow(ABC):
             limited_row_target = self._full_data_target.head(n=limit_num)
             return limited_row_features, limited_row_target
 
+    def subset_rows_arbitrary_full_dataset(self, start_row=int, end_row=int) -> pandas.DataFrame:
+        """
+        return arbitrary subset based on full dataset, restricted between start_row, and end_row
+        :param start_row:
+        :param end_row:
+        :return:
+        """
+
+        subset_row_features = self._full_data_features[start_row:end_row]
+        subset_row_target = self._full_data_target[start_row:end_row]
+        return subset_row_features, subset_row_target
+
     def limited_rows_split_train_dataset(self, limit_num=100) -> pandas.DataFrame:
         """
         return limited rows of training dataset for specific use.
@@ -202,11 +207,18 @@ class ModelExperimentWorkflow(ABC):
             limited_row_target = self._train_target.head(n=limit_num)
             return limited_row_features, limited_row_target
 
-    def subset_rows_arbitrary_full_dataset(self, start_row=int, end_row=int) -> pandas.DataFrame:
+    def subset_rows_arbitrary_split_train_dataset(self, start_row=int, end_row=int) -> pandas.DataFrame:
+        """
+        return arbitrary subset based on split training dataset, restricted between start_row, and end_row
+        :param start_row:
+        :param end_row:
+        :return:
+        """
 
-        subset_row_features = self._full_data_features[start_row:end_row]
-        subset_row_target = self._full_data_target[start_row:end_row]
+        subset_row_features = self._train_features[start_row:end_row]
+        subset_row_target = self._train_target[start_row:end_row]
         return subset_row_features, subset_row_target
+
 
 
 class ModelSklearnWorkflow(ModelExperimentWorkflow):
@@ -219,20 +231,27 @@ class ModelSklearnWorkflow(ModelExperimentWorkflow):
 
         self._model.fit(data_for_train, target_for_train)
 
-    def train_model_by_arbitrary_data(self, sub_data_start_row, sub_data_end_row):
+    def train_model_by_arbitrary_full_data(self, sub_data_start_row, sub_data_end_row):
 
         data_for_train, target_for_train = self.subset_rows_arbitrary_full_dataset(
             start_row=sub_data_start_row,
             end_row=sub_data_end_row
         )
+        self._model.fit(data_for_train, target_for_train)
 
+    def train_model_by_arbitrary_split_train_data(self, sub_data_start_row, sub_data_end_row):
+
+        data_for_train, target_for_train = self.subset_rows_arbitrary_split_train_dataset(
+            start_row=sub_data_start_row,
+            end_row=sub_data_end_row
+        )
         self._model.fit(data_for_train, target_for_train)
 
     def batch_pred_test_dataset(self):
         pred_result = self._model.predict(self._test_features)
-        return pred_result
+        return pred_result, self._test_target
 
-    def arbitrary_pred(self, sub_data_start_row, sub_data_end_row) -> (list, list):
+    def batch_pred_arbitrary_full_data(self, sub_data_start_row, sub_data_end_row) -> (list, list):
 
         data_for_test, target_for_test = self.subset_rows_arbitrary_full_dataset(
             start_row=sub_data_start_row,
@@ -281,9 +300,29 @@ class ModelRiverOnlineMLWorkflow(ModelExperimentWorkflow):
         for index, raw in tqdm(data_for_train.iterrows(), total=data_for_train.shape[0]):
             self._model.learn_one(raw, target_for_train[index])
 
-    def train_model_by_arbitrary_data(self, sub_data_start_row, sub_data_end_raw, is_reset_mode=True):
+    def train_model_by_arbitrary_full_data(self, sub_data_start_row, sub_data_end_raw, is_reset_mode=True):
 
         data_for_train, target_for_train = self.subset_rows_arbitrary_full_dataset(
+            start_row=sub_data_start_row,
+            end_row=sub_data_end_raw
+        )
+        print('Training Features Shape: ', data_for_train.shape)
+        print('Training Target Shape: ', target_for_train.shape)
+
+        # -------------------------------------------------#
+        # Using River ML model to do online training      #
+        # Core section, the different from SK learn model #
+        # -------------------------------------------------#
+        if is_reset_mode:
+            # reset model(not incremental from previous step)
+            self.reset_model()
+
+        for index, raw in tqdm(data_for_train.iterrows(), total=data_for_train.shape[0]):
+            self._model.learn_one(raw, target_for_train[index])
+
+    def train_model_by_arbitrary_split_train_data(self, sub_data_start_row, sub_data_end_raw, is_reset_mode=True):
+
+        data_for_train, target_for_train = self.subset_rows_arbitrary_split_train_dataset(
             start_row=sub_data_start_row,
             end_row=sub_data_end_raw
         )
@@ -308,9 +347,9 @@ class ModelRiverOnlineMLWorkflow(ModelExperimentWorkflow):
             test_pred = self._model.predict_one(raw)
             pred_result.append(test_pred)
 
-        return pred_result
+        return pred_result, self._test_target
 
-    def arbitrary_pred(self, sub_data_start_row, sub_data_end_row) -> (list, list):
+    def batch_pred_arbitrary_full_data(self, sub_data_start_row, sub_data_end_row) -> (list, list):
 
         pred_result = []
         data_for_test, target_for_test = self.subset_rows_arbitrary_full_dataset(
@@ -359,9 +398,9 @@ if __name__ == '__main__':
     exp_flow_riverml_HTC.set_model(model_riverml_HTC)
     exp_flow_riverml_AdaRF.set_model(model_riverml_AdaRF)
 
-    exp_flow_sklearn.train_model_by_arbitrary_data(1, 501)
-    exp_flow_riverml_HTC.train_model_by_arbitrary_data(1, 501)
-    exp_flow_riverml_AdaRF.train_model_by_arbitrary_data(1, 501)
+    exp_flow_sklearn.train_model_by_arbitrary_full_data(1, 501)
+    exp_flow_riverml_HTC.train_model_by_arbitrary_full_data(1, 501)
+    exp_flow_riverml_AdaRF.train_model_by_arbitrary_full_data(1, 501)
 
     exp_flow_sklearn.incremental_prediction(501, 2001)
     exp_flow_riverml_HTC.incremental_prediction(501, 2001)
@@ -388,13 +427,13 @@ if __name__ == '__main__':
         exp_flow_riverml_HTC.incremental_prediction(i_start, i_start + i_size)
         acc, recall = exp_flow_riverml_HTC.incremental_evaluate_model_get_accuracy_recall()
         acc_result_riverml_HTC.append(acc)
-        exp_flow_riverml_HTC.train_model_by_arbitrary_data(i_start, i_start + i_size, is_reset_mode=False)
+        exp_flow_riverml_HTC.train_model_by_arbitrary_full_data(i_start, i_start + i_size, is_reset_mode=False)
 
         #riverml adaptive random forest one step operation
         exp_flow_riverml_AdaRF.incremental_prediction(i_start, i_start + i_size)
         acc, recall = exp_flow_riverml_AdaRF.incremental_evaluate_model_get_accuracy_recall()
         acc_result_riverml_AdaRF.append(acc)
-        exp_flow_riverml_AdaRF.train_model_by_arbitrary_data(i_start, i_start + i_size, is_reset_mode=False)
+        exp_flow_riverml_AdaRF.train_model_by_arbitrary_full_data(i_start, i_start + i_size, is_reset_mode=False)
 
         i_start+=i_step
 
