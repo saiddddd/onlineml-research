@@ -93,6 +93,14 @@ class ModelExperimentWorkflow(ABC):
         pass
 
     @abstractmethod
+    def batch_pred_prob_test_dataset(self) -> (list, list):
+        """
+        batch testing on split test dataset with prediction probability
+        :return: predict proba result and target ground true
+        """
+        pass
+
+    @abstractmethod
     def batch_pred_arbitrary_full_data(self, start_row, end_row) -> (list, list):
         """
         predict subset data restricted between start_row, and end_row
@@ -251,6 +259,10 @@ class ModelSklearnWorkflow(ModelExperimentWorkflow):
         pred_result = self._model.predict(self._test_features)
         return pred_result, self._test_target
 
+    def batch_pred_prob_test_dataset(self):
+        pred_result = self._model.predict_proba(self._test_features)
+        return pred_result, self._test_target
+
     def batch_pred_arbitrary_full_data(self, sub_data_start_row, sub_data_end_row) -> (list, list):
 
         data_for_test, target_for_test = self.subset_rows_arbitrary_full_dataset(
@@ -348,6 +360,22 @@ class ModelRiverOnlineMLWorkflow(ModelExperimentWorkflow):
             pred_result.append(test_pred)
 
         return pred_result, self._test_target
+
+    def batch_pred_prob_test_dataset(self):
+        pred_prob_result = []
+        for index, raw in tqdm(self._test_features.iterrows(), total=self._test_features.shape[0]):
+            pred_prob_list = []
+            proba = self._model.predict_proba_one(raw)
+            # river ML pred_prob return a dictionary
+            # extract the values and save as list
+            for proba_value in proba.values():
+                pred_prob_list.append(proba_value)
+            # append extracted list
+            pred_prob_result.append(pred_prob_list)
+        pred_prob_result = np.array(pred_prob_result)
+        print(pred_prob_result)
+
+        return pred_prob_result, self._test_target
 
     def batch_pred_arbitrary_full_data(self, sub_data_start_row, sub_data_end_row) -> (list, list):
 
