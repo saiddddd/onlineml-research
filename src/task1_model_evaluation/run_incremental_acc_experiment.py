@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import statistics
 
@@ -8,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from tools.DataPreparation import AirlineDataPreparation
 from ModelExperimentWorkflow import ModelSklearnWorkflow, ModelRiverOnlineMLWorkflow
 
+print(os.getcwd())
 
 #--------------------------#
 # Initialization of models #
@@ -43,7 +46,7 @@ summary_acc_riverml_AdaRF_error = []
 #----------------------------------------------------------#
 # Starting the loop for randomly sampling training dataset #
 #----------------------------------------------------------#
-for i in range(3):
+for i in range(10):
 
     x_text_point = []
     acc_result_sklearn = []

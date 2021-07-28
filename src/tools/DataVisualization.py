@@ -1,5 +1,7 @@
 import traceback
 
+import matplotlib.style
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
@@ -87,5 +89,37 @@ class TrendPlot:
         plt.tick_params(labelleft=True, labelright=True)
         plt.grid(axis='y', alpha=.7, linestyle=":")
         plt.savefig('./output_trend_plot_functional.pdf')
+
+
+class CalibrationPlot:
+
+    def __init__(self):
+        mpl.style.use('fivethirtyeight')
+
+        plt.figure(figsize=(10, 10))
+        self._ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+        self._ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+        self._ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrates")
+
+
+    def add_calibration_curve(self, mean_predicted_value, fraction_of_positives, label="unnamed model"):
+        self._ax1.plot(mean_predicted_value, fraction_of_positives, "s-", label=label)
+
+    def add_histogram(self, prob_pos, name):
+        self._ax2.hist(prob_pos, range=(0, 1), bins=10, label=name, histtype='step', lw=2)
+
+    def save_fig(self, title="Calibration plots  (reliability curve)"):
+        self._ax1.set_ylabel("Fraction of positives")
+        self._ax1.set_ylim([-0.05, 1.05])
+        self._ax1.legend(loc='lower right')
+        self._ax1.set_title(title)
+
+        self._ax2.set_xlabel("Mean predicted value")
+        self._ax2.set_ylabel("Count")
+        self._ax2.legend(loc="upper center", ncol=2)
+        plt.tight_layout()
+        plt.savefig('./output_calibration.pdf')
+
 
 
