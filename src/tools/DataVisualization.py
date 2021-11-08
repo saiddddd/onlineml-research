@@ -80,7 +80,7 @@ class TrendPlot:
         plt.show()
 
 
-    def save_fig(self, title=None, x_label='data list sequence', y_label='unnamed data'):
+    def save_fig(self, title=None, x_label='data list sequence', y_label='unnamed data', save_fig_path='./output_fig.pdf'):
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
@@ -88,7 +88,7 @@ class TrendPlot:
         plt.tick_params(axis="y", direction="inout")
         plt.tick_params(labelleft=True, labelright=True)
         plt.grid(axis='y', alpha=.7, linestyle=":")
-        plt.savefig('./output_trend_plot_functional.pdf')
+        plt.savefig(save_fig_path)
 
 
 class CalibrationPlot:
@@ -119,7 +119,7 @@ class CalibrationPlot:
         self._ax2.set_ylabel("Count")
         self._ax2.legend(loc="upper center", ncol=2)
         plt.tight_layout()
+
+
         plt.savefig('./output_calibration.pdf')
-
-
 

@@ -8,7 +8,7 @@ import traceback
 import numpy as np
 import pandas
 
-from tools.DataPreparation import CreditCardPreparation, AirlineDataPreparation
+from tools.DataPreparation import DataPreparation, CreditCardPreparation, AirlineDataPreparation, ArbitraryDataPreparation
 from tools.DataVisualization import TrendPlot
 
 from graphviz import Graph
@@ -36,9 +36,7 @@ class ModelExperimentWorkflow(ABC):
         """
         Initializing Model Performacne testing workflow.
         """
-        if isinstance(
-                 input_data_preparation_class,
-                (AirlineDataPreparation, CreditCardPreparation)):
+        if isinstance(input_data_preparation_class, DataPreparation):
             pass
         else:
            raise TypeError
@@ -122,6 +120,17 @@ class ModelExperimentWorkflow(ABC):
         """
         pass
 
+    @abstractmethod
+    def incremental_prediction_proba(self, start_row: int, end_row: int, proba_cut_threshold: int) -> None:
+        """
+        predict subset data restricted between start_raw, and end_raw
+        accumulated casting predict result by probability
+        :param start_row:
+        :param end_row:
+        :param proba_cut_threshold:
+        :return:
+        """
+
     def batch_evaluate_model_get_accuracy_recall(self, pred_result=[], input_test_target=None):
         # Simply Prediction
         if type(input_test_target) is None:
@@ -201,7 +210,7 @@ class ModelExperimentWorkflow(ABC):
         subset_row_target = self._full_data_target[start_row:end_row]
         return subset_row_features, subset_row_target
 
-    def limited_rows_split_train_dataset(self, limit_num=100) -> pandas.DataFrame:
+    def limited_rows_split_train_dataset(self, limit_num=-1) -> pandas.DataFrame:
         """
         return limited rows of training dataset for specific use.
         Base on Split Dataset self._train_features and self._train_target
@@ -231,7 +240,7 @@ class ModelExperimentWorkflow(ABC):
 
 class ModelSklearnWorkflow(ModelExperimentWorkflow):
 
-    def train_model(self, train_num_limit=int):
+    def train_model(self, train_num_limit=-1):
 
         data_for_train, target_for_train = self.limited_rows_split_train_dataset(train_num_limit)
         print('Training Features Shape: ', data_for_train.shape)
@@ -285,11 +294,24 @@ class ModelSklearnWorkflow(ModelExperimentWorkflow):
         self._inc_tot_pred_related_target.extend(target_for_test)
 
 
+    def incremental_prediction_proba(self, start_row=0, end_row=-1, proba_cut_threshold=0.2) -> None:
+
+        data_for_test, target_for_test = self.subset_rows_arbitrary_full_dataset(
+            start_row=start_row,
+            end_row=end_row
+        )
+        pred_proba_result = self._model.predict_proba(data_for_test)
+
+        pred_result = list(map(lambda x: 0 if x < proba_cut_threshold else 1, pred_proba_result[:, 1]))
+        self._inc_tot_pred_result.extend(pred_result)
+        self._inc_tot_pred_related_target.extend(target_for_test)
+
+
 
 
 class ModelRiverOnlineMLWorkflow(ModelExperimentWorkflow):
 
-    def train_model(self, is_reset_mode=True, train_num_limit=int):
+    def train_model(self, is_reset_mode=True, train_num_limit=-1):
         """
         training model method on RiverML online learning implementation has slightly different from sklearn
         here have to check model is going to do incremental learning or reset model (re-train)
@@ -399,9 +421,28 @@ class ModelRiverOnlineMLWorkflow(ModelExperimentWorkflow):
             end_row=end_row
         )
 
-        for index, raw in tqdm(data_for_test.iterrows(), total=data_for_test.shape[0]):
-            test_pred = self._model.predict_one(raw)
+        for index, row in tqdm(data_for_test.iterrows(), total=data_for_test.shape[0]):
+            test_pred = self._model.predict_one(row)
             pred_result.append(test_pred)
+
+        self._inc_tot_pred_result.extend(pred_result)
+        self._inc_tot_pred_related_target.extend(target_for_test)
+
+
+    def incremental_prediction_proba(self, start_row=0, end_row=-1, proba_cut_threshold=0.2) -> None:
+
+        pred_result = []
+        data_for_test, target_for_test = self.subset_rows_arbitrary_full_dataset(
+            start_row=start_row,
+            end_row=end_row
+        )
+
+        for index, row in tqdm(data_for_test.iterrows(), total=data_for_test.shape[0]):
+            test_pred_proba = self._model.predict_proba_one(row)
+            if test_pred_proba[1] <= proba_cut_threshold:
+                pred_result.append(0)
+            else :
+                pred_result.append(1)
 
         self._inc_tot_pred_result.extend(pred_result)
         self._inc_tot_pred_related_target.extend(target_for_test)

@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import os
 
+
 class DataPreparation(ABC):
     """
     The Abstraction Factory interface declares a set of methods that return
@@ -21,6 +22,17 @@ class DataPreparation(ABC):
     @abstractmethod
     def _data_prepare(self):
         pass
+
+    def _data_object_encoder(self):
+        #======================#
+        # To do object encoder #
+        #======================#
+        for col in self._df.columns:
+            if self._df[col].dtype == 'object':
+                self._df[col] = self._df[col].fillna(self._df[col].mode())
+                self._df[col] = LabelEncoder().fit_transform(self._df[col])
+            else:
+                self._df[col] = self._df[col].fillna(self._df[col].median())
 
     def check_target_rate(self):
         # self._data_prepare()
@@ -64,8 +76,8 @@ class CreditCardPreparation(DataPreparation):
         #==============#
         # Data Loading #
         #==============#
-        df_app = pd.read_csv("../data/credit_card_approvel/application_record.csv")
-        df_credit = pd.read_csv("../data/credit_card_approvel/credit_record.csv")
+        df_app = pd.read_csv("/Users/pwang/BenWork/OnlineML/onlineml/data/credit_card_approvel/application_record.csv")
+        df_credit = pd.read_csv("/Users/pwang/BenWork/OnlineML/onlineml/data/credit_card_approvel/credit_record.csv")
 
         # Convert status to numertic and group-max by status for each unique id.
         # This will be a proxy for whether an application will be approved, since there is no yes/no flag
@@ -95,8 +107,8 @@ class CreditCardPreparation(DataPreparation):
         split feature and target
         """
 
-        # defining the targer, risk,
-        # Check out STATUS to dicide weather this customer is High Risk
+        # defining the target, risk,
+        # Check out STATUS to decide weather this customer is High Risk
         # If STATUS < 1 return 0 (no risk); else return 1 (with risk)
         self._df['high_risk'] = np.where(self._df['STATUS'] < 1, 0, 1)
         # convert days old to years
@@ -117,22 +129,10 @@ class CreditCardPreparation(DataPreparation):
         self._df.drop(['own_car_N'], axis=1, inplace=True)
         self._df.drop(['own_property_N'], axis=1, inplace=True)
 
-        # self._target = np.array(df_formatted['high_risk'])
-        # self._features = df_formatted.drop('high_risk', axis = 1)
-        # self._features = np.array(self._features)
-
         self._df = self._df.sort_values(by=['MONTHS_BALANCE'], ascending=False)
 
         # split target from features
         self._target = self._df.pop('high_risk')
-
-    # def get_pddataframe_data(self):
-    #     self._data_prepare()
-    #     return self._df, self._target
-    #
-    # def get_pddataframe_data_by_month_balance_order(self):
-    #     self._data_prepare()
-    #     return self._df, self._target
 
 
 class AirlineDataPreparation(DataPreparation):
@@ -146,40 +146,23 @@ class AirlineDataPreparation(DataPreparation):
         self._data_prepare()
 
     def _data_prepare(self):
-        #=====================#
-        # To do label encoder #
-        #=====================#
-        for col in self._df.columns:
-            if self._df[col].dtype == 'object':
-                self._df[col] = self._df[col].fillna(self._df[col].mode())
-                self._df[col] = LabelEncoder().fit_transform(self._df[col])
-            else:
-                self._df[col] = self._df[col].fillna(self._df[col].median())
+        self._data_object_encoder()
 
         self._target = self._df.pop('satisfaction')
 
-    # def get_pddataframe_data(self):
-    #     self._data_prepare()
-    #     return self._df, self._target
-    #
-    # def check_target_rate(self):
-    #     self._data_prepare()
-    #     target_rate = self._target[self._target == 1].count()/len(self._target)
-    #     return target_rate
 
+class ArbitraryDataPreparation(DataPreparation):
+    def __init__(self, input_path, label_name: str = ''):
+        try:
+            self._df = pd.read_csv(input_path)
+            self._data_prepare(label_name)
 
-class TitanicDataPreparation:
+        except:
+            raise FileNotFoundError
 
-    def __init__(self):
-        #==============#
-        # Data loading #
-        #==============#
-        df_raw_titanic_train = pd.read_csv("../data/titanic/train.csv")
-        df_raw_titanic_test = pd.read_csv("../data/titanic/test.csv")
-
-
-
-
+    def _data_prepare(self, label_name):
+        self._data_object_encoder()
+        self._target = self._df.pop(label_name)
 
 
 if __name__ == '__main__':
