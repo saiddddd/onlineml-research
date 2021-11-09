@@ -7,7 +7,7 @@ from river import tree
 from river import ensemble
 from sklearn.ensemble import RandomForestClassifier
 
-from tools.DataPreparation import AirlineDataPreparation
+from tools.DataPreparation import AirlineDataPreparation, ArbitraryDataPreparation, CreditCardPreparation
 from ModelExperimentWorkflow import ModelSklearnWorkflow, ModelRiverOnlineMLWorkflow
 
 print(os.getcwd())
@@ -46,7 +46,7 @@ summary_acc_riverml_AdaRF_error = []
 #----------------------------------------------------------#
 # Starting the loop for randomly sampling training dataset #
 #----------------------------------------------------------#
-for i in range(10):
+for i in range(2):
 
     x_text_point = []
     acc_result_sklearn = []
@@ -54,10 +54,31 @@ for i in range(10):
     acc_result_riverml_AdaRF = []
 
     ## create model experiment workflow
-    exp_flow_sklearn = ModelSklearnWorkflow(AirlineDataPreparation(), random_seed=i)
-    exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
-    exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
+    # exp_flow_sklearn = ModelSklearnWorkflow(AirlineDataPreparation(), random_seed=i)
+    # exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
+    # exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
 
+    exp_flow_sklearn = ModelSklearnWorkflow(CreditCardPreparation(), random_seed=i)
+    exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
+    exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
+
+    # exp_flow_sklearn = ModelSklearnWorkflow(
+    #     ArbitraryDataPreparation(
+    #         "../../data/airline/airline_data.csv", "satisfaction"
+    #     ),
+    #     random_seed=i)
+    # exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(
+    #     ArbitraryDataPreparation(
+    #         "../../data/airline/airline_data.csv", "satisfaction"
+    #     ),
+    #     random_seed=i
+    # )
+    # exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(
+    #     ArbitraryDataPreparation(
+    #         "../../data/airline/airline_data.csv", "satisfaction"
+    #     ),
+    #     random_seed=i
+    # )
     exp_flow_sklearn.set_model(model_sklearn)
     exp_flow_riverml_HTC.set_model(model_riverml_HTC)
     exp_flow_riverml_AdaRF.set_model(model_riverml_AdaRF)
@@ -92,7 +113,7 @@ for i in range(10):
     #---------------------------------#
     for exp in exp_flow_dict.values():
         exp['workflow'].train_model_by_arbitrary_split_train_data(1, 501)
-        exp['workflow'].incremental_prediction(501, 2001)
+        exp['workflow'].incremental_prediction_proba(501, 2001, 0.5)
 
     #--------------------------------------------------------------------#
     # Simulating the streaming workflow for following step               #
@@ -111,9 +132,9 @@ for i in range(10):
         # Appending the accuracy result in this step #
         #--------------------------------------------#
         for exp in exp_flow_dict.values():
-            exp['workflow'].incremental_prediction(i_start, i_start + i_size)
+            exp['workflow'].incremental_prediction_proba(i_start, i_start + i_size, 0.2)
             acc, recall = exp['workflow'].incremental_evaluate_model_get_accuracy_recall()
-            exp['inter_run_acc'].append(acc)
+            exp['inter_run_acc'].append(recall)
 
         #--------------------------------------------------------------#
         # For online ml model, to learn more from this coming new data #
@@ -123,7 +144,7 @@ for i in range(10):
 
         i_start+=i_step
 
-        if i_start > 70000:
+        if i_start > 20000:
             break
 
     #-----------------------------------------------------------#

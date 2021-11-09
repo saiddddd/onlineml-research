@@ -5,6 +5,30 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
+class BasicHistogram:
+
+    def __init__(self, input_data):
+
+        self._X = input_data
+        self._plt = plt
+
+    def draw_distribution(self, **kwargs):
+        self._plt.hist(self._X, **kwargs)
+        self._plt.yscale('log')
+        self._plt.grid()
+
+    def set_xlabel(self, x_label):
+        self._plt.xlabel(x_label)
+
+    def set_ylabel(self, y_label):
+        self._plt.ylabel(y_label)
+
+    def set_title(self, title):
+        self._plt.title(title)
+
+    def save_fig(self, saving_location):
+        self._plt.savefig(saving_location)
+
 class HistogramCompare:
 
     def __init__(self, nominal_data, comparing_data):

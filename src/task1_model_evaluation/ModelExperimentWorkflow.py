@@ -236,6 +236,9 @@ class ModelExperimentWorkflow(ABC):
         subset_row_target = self._train_target[start_row:end_row]
         return subset_row_features, subset_row_target
 
+    def get_train_size(self):
+        return len(self._train_features)
+
 
 
 class ModelSklearnWorkflow(ModelExperimentWorkflow):

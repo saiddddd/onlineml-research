@@ -1,6 +1,7 @@
 
 import argparse
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn.metrics import accuracy_score, recall_score, precision_score
@@ -9,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from river import tree, ensemble
 
 from tools.DataPreparation import ArbitraryDataPreparation, CreditCardPreparation
-from tools.DataVisualization import TrendPlot
+from tools.DataVisualization import TrendPlot, BasicHistogram
 
 from task1_model_evaluation.ModelExperimentWorkflow import ModelSklearnWorkflow, ModelRiverOnlineMLWorkflow
 
@@ -28,8 +29,6 @@ def get_data(input_data, label_name):
 
 
 def init_workflow(args, loaded_data):
-    x_df, y_df = loaded_data.get_pd_df_data()
-
     # --------------------------------#
     # Model and workflow preparation #
     # -------------------------------#
@@ -72,7 +71,7 @@ def init_workflow(args, loaded_data):
 
     return exp_flow
 
-def sliding_proba_cut_threshold_draw(exp_flow, output_plot):
+def draw_sliding_proba_cut_threshold(exp_flow, output_plot):
     proba_cut = []
     acc_slide_proba_cut = []
     recall_slide_proba_cut = []
@@ -101,29 +100,61 @@ def sliding_proba_cut_threshold_draw(exp_flow, output_plot):
     plot.save_fig("sliding proba cut point", x_label="proba cut", y_label="index", save_fig_path=output_plot)
 
 
+def draw_proba_distribution_hist(exp_flow, args):
 
-def run_complete_flow(args, loaded_data):
+    data_name = ""
+    if "/" in args.input_data:
+        print("going to extract data_name")
+        data_name = args.input_data.split(sep='/')[-1]
+        print(data_name)
+        data_name = data_name.split(sep='.')[0]
+    else:
+        data_name = args.input_data
+
+    pred_proba, true_y = exp_flow.batch_pred_prob_test_dataset()
+    pred_proba_y_true_subclass = pred_proba[true_y == 1][:, 1]
+    pred_proba_y_false_subclass = pred_proba[true_y == 0][:, 1]
+
+    plt.figure(figsize=(14, 4))
+    plt.suptitle(data_name+'_pred_proba_distribution'+"_"+args.model_type)
+    plt.subplot(131)
+    plt.hist(pred_proba_y_true_subclass, bins=50, alpha=0.5, label='Y True')
+    plt.hist(pred_proba_y_false_subclass, bins=50, alpha=0.5, label='Y False')
+    plt.yscale('log')
+    plt.title('stacking prediction proba in both class')
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.grid()
+    plt.legend()
+    plt.subplot(132)
+    plt.hist(pred_proba_y_true_subclass, bins=50)
+    plt.yscale('log')
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.grid()
+    plt.subplot(133)
+    plt.hist(pred_proba_y_false_subclass, bins=50)
+    plt.yscale('log')
+    plt.grid()
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.savefig(args.output_dir + data_name + "_pred_proba_distribution" + "_" + args.model_type + ".pdf")
+
+
+def run_complete_training_set(args, loaded_data):
 
     exp_flow = init_workflow(args, loaded_data)
-    # training model
 
+    # training model
     print("Training Model")
     exp_flow.train_model()
     print("Training Model Complete")
 
-    print("prediction")
-    pred_y, true_y =exp_flow.batch_pred_test_dataset()  # using prediction
-
-    acc = accuracy_score(true_y, pred_y)
-    recall = recall_score(true_y, pred_y)
-    precision = precision_score(true_y, pred_y)
-    print("acc, recall, precision extracted by prediction value")
-    print(acc, recall, precision)
-
-    sliding_proba_cut_threshold_draw(exp_flow, args.output_plot)
+    # draw_sliding_proba_cut_threshold(exp_flow, args.output_dir)
+    draw_proba_distribution_hist(exp_flow, args)
 
 
-def run_incremental_recall_proba_cut(args, loaded_data, output_plot_stash):
+def run_incremental_training(args, loaded_data, output_plot_stash):
 
     exp_flow = init_workflow(args, loaded_data)
 
@@ -163,25 +194,26 @@ def run_incremental_recall_proba_cut(args, loaded_data, output_plot_stash):
 
         i_start += i_step
 
-        if i_start > 70000:
+        if i_start > exp_flow.get_train_size()-1:
             break
 
 
     output_plot_stash.plot_trend(x_test_point, evaluation_result, label=args.evaluation_index)
-    # plot.save_fig("sliding proba cut point", x_label="proba cut", y_label="*100%", save_fig_path=args.output_plot)
+    # plot.save_fig("sliding proba cut point", x_label="proba cut", y_label="*100%", save_fig_path=args.output_dir)
 
 
 
 
 def run_main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-j', '--job', type=str, default='proba_check', help=' `proba_check` check the distribution')
     parser.add_argument('-i', '--input-data', type=str)
     parser.add_argument('-l', '--label-name', type=str)
     parser.add_argument('-m', '--model-type', type=str, default='river_htc')
     parser.add_argument('-e', '--evaluation-index', type=str, default='recall')
     parser.add_argument('-p', '--predict-type', type=str, default='pred', help='prediction type, 1. pred or 2. pred_proba')
     parser.add_argument('-t', '--proba-threshold', type=float, default=0.2, help='pred_proba cut threshold')
-    parser.add_argument('-o', '--output-plot', type=str, default='./output_plot/test.pdf')
+    parser.add_argument('-o', '--output-dir', type=str, default='./output_plot/')
     args = parser.parse_args()
 
     loaded_data = get_data(
@@ -189,12 +221,24 @@ def run_main():
         args.label_name
     )
 
-    plot = TrendPlot()
-    # run_complete_flow(args, loaded_data)
-    run_incremental_recall_proba_cut(args, loaded_data, plot)
-    plot.save_fig("sliding proba cut point", x_label="proba cut", y_label="*100%",
-                  save_fig_path=args.model_type+'_'+args.predict_type+'_'+str(args.proba_threshold)+'_'+args.output_plot
-                  )
+    if args.job == 'proba_check':
+        run_complete_training_set(args, loaded_data)
+    else:
+
+        data_name = ""
+        if "/" in args.input_data:
+            print("going to extract data_name")
+            data_name = args.input_data.split(sep='/')[-1]
+            print(data_name)
+            data_name = data_name.split(sep='.')[0]
+        else:
+            data_name = args.input_data
+
+        plot = TrendPlot()
+        run_incremental_training(args, loaded_data, plot)
+        plot.save_fig(args.model_type+' '+args.predict_type+' '+str(args.proba_threshold), x_label="# data observed", y_label=args.evaluation_index+" 100%",
+                      save_fig_path=args.output_dir + data_name +"_"+ args.evaluation_index + "_trend" + "_" + args.model_type + ".pdf"
+                      )
 
 if __name__ == '__main__':
     run_main()
