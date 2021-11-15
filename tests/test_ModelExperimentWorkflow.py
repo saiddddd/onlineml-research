@@ -36,3 +36,8 @@ def test_subset_rows_split_train_dataset():
     print(target.shape)
 
     assert True
+
+
+def test_batch_pred_test_dataset():
+
+    assert False
