@@ -152,18 +152,35 @@ class AirlineDataPreparation(DataPreparation):
 
 
 class ArbitraryDataPreparation(DataPreparation):
-    def __init__(self, input_path, label_name: str = ''):
+    def __init__(self, input_path: str = '', label_name: str = '', feature_to_drop: list = []):
         try:
             self._df = pd.read_csv(input_path)
             self._data_prepare(label_name)
-
         except:
             raise FileNotFoundError
 
+
+        print(self._df.columns)
+
+        if len(feature_to_drop) > 0:
+            for i in feature_to_drop:
+                if isinstance(i, str):
+                    try:
+                        aaa = self._df.pop(i)
+                        print('preparation of dataframe, drop feature {} successfully'.format(i))
+                    except :
+                        print('feature going to drop {} not found'.format(i))
+
+        print(self._df.columns)
+
+
     def _data_prepare(self, label_name):
         self._data_object_encoder()
-        self._target = self._df.pop(label_name)
-
+        try:
+            self._target = self._df.pop(label_name)
+        except:
+            print('dataframe can not found the target label {}'.format(label_name))
+            raise RuntimeError
 
 if __name__ == '__main__':
     from tools.DataVisualization import HistogramCompare, TrendPlot
