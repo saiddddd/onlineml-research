@@ -58,27 +58,27 @@ for i in range(2):
     # exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
     # exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(AirlineDataPreparation(), random_seed=i)
 
-    exp_flow_sklearn = ModelSklearnWorkflow(CreditCardPreparation(), random_seed=i)
-    exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
-    exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
+    # exp_flow_sklearn = ModelSklearnWorkflow(CreditCardPreparation(), random_seed=i)
+    # exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
+    # exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(CreditCardPreparation(), random_seed=i)
 
-    # exp_flow_sklearn = ModelSklearnWorkflow(
-    #     ArbitraryDataPreparation(
-    #         "../../data/airline/airline_data.csv", "satisfaction"
-    #     ),
-    #     random_seed=i)
-    # exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(
-    #     ArbitraryDataPreparation(
-    #         "../../data/airline/airline_data.csv", "satisfaction"
-    #     ),
-    #     random_seed=i
-    # )
-    # exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(
-    #     ArbitraryDataPreparation(
-    #         "../../data/airline/airline_data.csv", "satisfaction"
-    #     ),
-    #     random_seed=i
-    # )
+    exp_flow_sklearn = ModelSklearnWorkflow(
+        ArbitraryDataPreparation(
+            "../../data/highway/highway_traffic_eda_data_ready_for_ml_2021_01.csv", "TrafficJam60MinLater", ["DateTime", "ICNUM"]
+        ),
+        random_seed=i)
+    exp_flow_riverml_HTC = ModelRiverOnlineMLWorkflow(
+        ArbitraryDataPreparation(
+            "../../data/airline/airline_data.csv", "satisfaction"
+        ),
+        random_seed=i
+    )
+    exp_flow_riverml_AdaRF = ModelRiverOnlineMLWorkflow(
+        ArbitraryDataPreparation(
+            "../../data/airline/airline_data.csv", "satisfaction"
+        ),
+        random_seed=i
+    )
     exp_flow_sklearn.set_model(model_sklearn)
     exp_flow_riverml_HTC.set_model(model_riverml_HTC)
     exp_flow_riverml_AdaRF.set_model(model_riverml_AdaRF)
@@ -93,19 +93,19 @@ for i in range(2):
                           'inter_run_acc':acc_result_sklearn,
                           'summary_acc':summary_acc_sklearn,
                           'summary_acc_mean':summary_acc_sklearn_mean,
-                          'summary_acc_error':summary_acc_sklearn_error},
-                     'river_htc':
-                         {'workflow':exp_flow_riverml_HTC,
-                          'inter_run_acc':acc_result_riverml_HTC,
-                          'summary_acc':summary_acc_riverml_HTC,
-                          'summary_acc_mean':summary_acc_riverml_HTC_mean,
-                          'summary_acc_error':summary_acc_riverml_HTC_error},
-                     'river_adarf':
-                         {'workflow':exp_flow_riverml_AdaRF,
-                          'inter_run_acc':acc_result_riverml_AdaRF,
-                          'summary_acc':summary_acc_riverml_AdaRF,
-                          'summary_acc_mean':summary_acc_riverml_AdaRF_mean,
-                          'summary_acc_error':summary_acc_riverml_AdaRF_mean}
+                          'summary_acc_error':summary_acc_sklearn_error}
+                     # 'river_htc':
+                     #     {'workflow':exp_flow_riverml_HTC,
+                     #      'inter_run_acc':acc_result_riverml_HTC,
+                     #      'summary_acc':summary_acc_riverml_HTC,
+                     #      'summary_acc_mean':summary_acc_riverml_HTC_mean,
+                     #      'summary_acc_error':summary_acc_riverml_HTC_error},
+                     # 'river_adarf':
+                     #     {'workflow':exp_flow_riverml_AdaRF,
+                     #      'inter_run_acc':acc_result_riverml_AdaRF,
+                     #      'summary_acc':summary_acc_riverml_AdaRF,
+                     #      'summary_acc_mean':summary_acc_riverml_AdaRF_mean,
+                     #      'summary_acc_error':summary_acc_riverml_AdaRF_mean}
                      }
 
     #---------------------------------#
