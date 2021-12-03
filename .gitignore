@@ -143,4 +143,8 @@ dmypy.json
 /src/output_plot/
 /src/data_eda/highway_data_2021_online_ml_phase_II_poc/data/
 
+# Data folder
+/data
+/output_plot
+
 *.tar
