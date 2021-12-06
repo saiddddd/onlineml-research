@@ -27,7 +27,7 @@ def test_time_series_data_loader():
 
     while True:
         try:
-            next_time = data_loader.get_next_time_set_iteration()
+            next_time = data_loader.get_next_time_from_iteration()
             sub_df = data_loader.sub_df_by_time_interval(next_time)
             print(sub_df)
         except StopIteration:

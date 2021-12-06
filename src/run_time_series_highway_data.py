@@ -12,11 +12,13 @@ DATA_YEAR_MONTH_LIST = [
     '2021_07', '2021_08', '2021_09', '2021_10', '2021_11', '2021_12'
 ]
 
+
 #=============================================================#
 # Defination of functions for following data processing steps #
 #=============================================================#
 def combine_data_path(year_month) -> str:
     return DATA_HOME_PATH + "highway_traffic_eda_data_ready_for_ml_" + year_month + '.csv'
+
 
 def preparation_data_for_test(data_path) -> TimeSeriesDataLoader:
     data_loader = TimeSeriesDataLoader(
@@ -86,6 +88,6 @@ draw_pred_proba = PredictionProbabilityDist(pred_proba_result, y_test)
 
 draw_pred_proba.draw_proba_dist_by_true_false_class_seperated()
 draw_pred_proba.show_plt()
-draw_pred_proba.save_fig("output_plot/highway_pred_proba_distribution_test.pdf")
+draw_pred_proba.save_fig("../output_plot/highway_pred_proba_distribution_test.pdf")
 
 

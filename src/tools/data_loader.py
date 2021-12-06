@@ -103,15 +103,27 @@ class TimeSeriesDataLoader(DataLoader):
         print("sorting by time in ascending order:{}, successfully".format(ascending_order))
     
     def fill_na_with_zero(self):
+        """
+        data preprocessing step, filling na value with 0
+        :return:
+        """
         self._op_df.fillna(0, inplace=True)
     
     def label_encoding(self):
+        """
+        data preprocessing step, string encoding to int
+        :return:
+        """
         for col in self._op_df:
             if self._op_df[col].dtype == 'object':
                 self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
         
     def drop_feature(self, feature_to_drop):
-        
+        """
+        using cases specified function, to drop unwanted feature column(s), inplace operation is True
+        :param feature_to_drop:
+        :return:
+        """
         try:
             self._op_df.drop([feature_to_drop], axis=1, inplace=True)
         except KeyError:
@@ -126,26 +138,55 @@ class TimeSeriesDataLoader(DataLoader):
                 print(check_column)
                 raise RuntimeError
 
-    def get_distinct_time_set_list(self):
+    def get_distinct_time_set_list(self) -> list:
+        """
+        get the sorted list of all distinct datetime set from operation dataframe (self._op_df)
+        :return: list of distinct datetime set
+        :rtype: list
+        """
         return self._distinct_time_set
 
-    def get_next_time_set_iteration(self):
+    def get_next_time_from_iteration(self):
+        """
+        get next datetime from iteration.
+        :return: next datetime
+        """
         next_time = next(self._distinct_time_set_iterator)
         return next_time
     
     def get_distinct_date_set_list(self):
+        """
+        get the sorted list of all distinct date set from operation dataframe (self._op_df)
+        :return: list of distinct date set
+        :rtype: next date
+        """
         return self._distinct_date_set
     
-    def get_next_date_set_iterator(self):
+    def get_next_date_from_iteration(self):
+        """
+        get next date from iteration.
+        :return: next date
+        """
         next_date = next(self._distinct_date_set_iterator)
         return next_date
         
     
     def get_full_df(self) -> pd.DataFrame:
+        """
+        To get full set of dateframe (self._op_df without time selection)
+        :return: self._op_df
+        :rtype: pd.Dataframe
+        """
         return self._op_df
     
     def get_sub_df_by_date(self, selected_date) -> pd.DataFrame:
-        
+        """
+        To get sub dataframe by filtering with date.
+        >> e.g. get_sub_df_by_date("2021-01-01"),
+        >> return df["DateTime"] == 2021-01-01
+        :param selected_date:
+        :return: pd.DataFrame
+        """
         df = self._op_df[self._op_df[self._time_series_column_name].dt.date == selected_date]
         return df
 
@@ -229,7 +270,7 @@ if __name__ == '__main__':
     #     except StopIteration:
     #         break
 
-    next_date = data_loader.get_next_date_set_iterator()
+    next_date = data_loader.get_next_date_from_iteration()
     sub_df = data_loader.get_sub_df_by_date(next_date)
     
     print(sub_df)
