@@ -4,6 +4,8 @@ from abc import abstractmethod, ABC
 import pandas as pd
 import numpy as np
 
+from sklearn.preprocessing import LabelEncoder
+
 from time import time
 
 class DataLoader(ABC):
@@ -77,11 +79,18 @@ class TimeSeriesDataLoader(DataLoader):
 
         # sorting by time in ascending order
         self.sort_by_time()
+        # encoding data if it is not int
+        self.label_encoding()
+        # fill na with 0
+        self.fill_na_with_zero()
 
         # extract distinct time set
         self._distinct_time_set = sorted(self._op_df[self._time_series_column_name].unique())
-
         self._distinct_time_set_iterator = iter(list(self._distinct_time_set))
+        
+        # extract distinct date set
+        self._distinct_date_set = sorted(self._op_df[self._time_series_column_name].dt.date.unique())
+        self._distinct_date_set_iterator = iter(list(self._distinct_date_set))
 
     def sort_by_time(self, ascending_order=True):
         """
@@ -92,7 +101,30 @@ class TimeSeriesDataLoader(DataLoader):
         self._op_df.reset_index(inplace=True, drop=True)
         print(self._op_df)
         print("sorting by time in ascending order:{}, successfully".format(ascending_order))
+    
+    def fill_na_with_zero(self):
+        self._op_df.fillna(0, inplace=True)
+    
+    def label_encoding(self):
+        for col in self._op_df:
+            if self._op_df[col].dtype == 'object':
+                self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
+        
+    def drop_feature(self, feature_to_drop):
+        
+        try:
+            self._op_df.drop([feature_to_drop], axis=1, inplace=True)
+        except KeyError:
+            print("{} is not found in dataframe".format(feature_to_drop))
+            
 
+        check_column = self._op_df.columns
+        for i in check_column:
+            if i == feature_to_drop:
+                print(i)
+                print(feature_to_drop)
+                print(check_column)
+                raise RuntimeError
 
     def get_distinct_time_set_list(self):
         return self._distinct_time_set
@@ -100,6 +132,22 @@ class TimeSeriesDataLoader(DataLoader):
     def get_next_time_set_iteration(self):
         next_time = next(self._distinct_time_set_iterator)
         return next_time
+    
+    def get_distinct_date_set_list(self):
+        return self._distinct_date_set
+    
+    def get_next_date_set_iterator(self):
+        next_date = next(self._distinct_date_set_iterator)
+        return next_date
+        
+    
+    def get_full_df(self) -> pd.DataFrame:
+        return self._op_df
+    
+    def get_sub_df_by_date(self, selected_date) -> pd.DataFrame:
+        
+        df = self._op_df[self._op_df[self._time_series_column_name].dt.date == selected_date]
+        return df
 
     def sub_df_by_time_interval(self, start_time, end_time=None) -> pd.DataFrame:
         """
@@ -121,6 +169,9 @@ class TimeSeriesDataLoader(DataLoader):
 
     def reset_time_set_iterator(self):
         self._distinct_time_set_iterator = iter(self._distinct_time_set)
+
+    def reset_date_set_iterator(self):
+        self._distinct_date_set_iterator = iter(self._distinct_date_set)
 
     def get_earliest_data(self) -> pd.DataFrame:
         first_row = self._op_df.iloc[0]
@@ -149,33 +200,36 @@ if __name__ == '__main__':
     model = tree.HoeffdingTreeClassifier()
 
     data_loader = TimeSeriesDataLoader(
-        "../../data/highway/highway_traffic_eda_data_ready_for_ml_2021_01_for_unitest.csv",
+        "data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2021_01.csv",
         time_series_column_name="DateTime", time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
     )
 
 
-    while True:
-        try:
-            next_time = data_loader.get_next_time_set_iteration()
-            sub_df = data_loader.sub_df_by_time_interval(next_time)
-            target_y = sub_df.pop("TrafficJam60MinLater")
+    # while True:
+    #     try:
+    #         next_time = data_loader.get_next_time_set_iteration()
+    #         sub_df = data_loader.sub_df_by_time_interval(next_time)
+    #         target_y = sub_df.pop("TrafficJam60MinLater")
 
-            print("feeding data with time :{}".format(pd.to_datetime(next_time)))
+    #         print("feeding data with time :{}".format(pd.to_datetime(next_time)))
 
-            for index, row in sub_df.iterrows():
-                model.learn_one(row, target_y[index])
+    #         for index, row in sub_df.iterrows():
+    #             model.learn_one(row, target_y[index])
 
-        except StopIteration:
-            break
+    #     except StopIteration:
+    #         break
+    
+    # while True:
+        
+    #     try:
+    #         next_date = data_loader.get_next_date_set_iterator()
+    #         sub_df = data_loader.sub_df_by_time_interval(next_date)
+    #         print(sub_df)
+            
+    #     except StopIteration:
+    #         break
 
-
-
-
-
-
-
-
-
-
-
-
+    next_date = data_loader.get_next_date_set_iterator()
+    sub_df = data_loader.get_sub_df_by_date(next_date)
+    
+    print(sub_df)
