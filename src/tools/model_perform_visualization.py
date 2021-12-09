@@ -1,8 +1,12 @@
 from matplotlib import pyplot as plt
+from matplotlib import dates as mdates
 
 class PredictionProbabilityDist:
     
     def __init__(self, pred_proba_result_list : list, target_list : list):
+        
+        plt.clf()
+        plt.cla()
         
         self._pred_proba_result_list = pred_proba_result_list
         self._target_list = target_list
@@ -44,19 +48,25 @@ class PredictionProbabilityDist:
 
 class TrendPlot:
     
-    def __init__(self):
+    def __init__(self, figsize_x=8, figsize_y=6, is_time_series=True):
+
+        plt.clf()
+        plt.cla()
+        self.fig, self.ax = plt.subplots()
+        # plt.figure(figsize=(14, 4))
+        self.fig.set_figheight(4)
+        self.fig.set_figwidth(14)
         
-        import matplotlib.dates as mdates
-        dtFmt = mdates.DateFormatter('%b-%d %y')
-        plt.gca().xaxis.set_major_formatter(dtFmt)
-        plt.xticks(rotation=45)
-        
+        if is_time_series:
+            dtFmt = mdates.DateFormatter('%b-%d %y')
+            plt.gca().xaxis.set_major_formatter(dtFmt)
+            plt.xticks(rotation=45)
 
     def plot_trend(self, *args, label='unnammed trend'):
-        plt.plot(*args, label=label)
+        self.ax.plot(*args, label=label)
 
-    def plot_trend_with_error_bar(self, *args, y_err, label='unnammed trend'):
-        plt.errorbar(*args, yerr=y_err, fmt='o', markersize=4, capsize=2, label=label)
+    def plot_trend_with_error_bar(self, *args, **kwargs):
+        self.ax.errorbar(*args, **kwargs)
 
     def plot_trend_with_error_band(self, *args, y_err, label='unnammed trend'):
 
@@ -82,10 +92,10 @@ class TrendPlot:
 
         except IndexError:
             traceback.print_exception()
-
-    def show(self):
-        plt.show()
-
+            
+    def plot_bar(self, *args, **kwargs):
+        ax2 = self.ax.twinx()
+        ax2.bar(*args, **kwargs)
 
     def save_fig(self, title=None, x_label='data list sequence', y_label='unnamed data', save_fig_path='./output_fig.pdf'):
         plt.title(title)
@@ -105,8 +115,11 @@ if __name__ == '__main__':
     import pandas as pd
     x_date = ["2021-01-01 00:00", "2021-01-01 00:05", "2021-01-01 00:10", "2021-01-01 00:15"]
     x_date = pd.to_datetime(x_date)
-    test_list = [1,2,3,1]
-    trend_plot = TrendPlot()
+    test_list = [3,2,6,4]
+    trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
     trend_plot.plot_trend(x_date, test_list)
-    trend_plot.save_fig(save_fig_path='test.png')
+    trend_plot.save_fig(title='test plot', 
+                        x_label='dummy time', 
+                        y_label='dummy data',
+                        save_fig_path='test.png')
 
