@@ -8,7 +8,7 @@ from river.ensemble import AdaptiveRandomForestClassifier
 from tools.data_loader import TimeSeriesDataLoader
 
 import abc
-import tqdm
+from tqdm import tqdm
 
 class ModelTrainerReader(abc.ABC):
 

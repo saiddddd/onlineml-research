@@ -21,37 +21,10 @@ DATA_YEAR_MONTH_LIST = [
 
 
 #=============================================================#
-# Defination of functions for following data processing steps #
+# Definition of functions for following data processing steps #
 #=============================================================#
 def combine_data_path(year_month) -> str:
     return DATA_HOME_PATH + "highway_traffic_eda_data_ready_for_ml_" + year_month + '.csv'
-
-
-def preparation_data_for_test(data_path) -> TimeSeriesDataLoader:
-    data_loader = TimeSeriesDataLoader(
-        data_path,
-        time_series_column_name="DateTime", time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
-    )
-    data_loader.drop_feature("TrafficJam")
-    data_loader.drop_feature("TrafficJam30MinLater")
-    data_loader.drop_feature("MeanSpeed")
-    data_loader.drop_feature("MeanSpeed10MinAgo")
-    data_loader.drop_feature("MeanSpeed30MinAgo")
-    data_loader.drop_feature("MeanSpeed60MinAgo")
-    data_loader.drop_feature("Upstream1MeanSpeed")
-    data_loader.drop_feature("Upstream2MeanSpeed")
-    data_loader.drop_feature("Upstream3MeanSpeed")
-    data_loader.drop_feature("Downstream1MeanSpeed")
-    data_loader.drop_feature("Downstream2MeanSpeed")
-    data_loader.drop_feature("Downstream3MeanSpeed")
-    
-    full_data = data_loader.get_full_df()
-
-    X = full_data
-    y = X.pop("TrafficJam60MinLater")
-    X.drop(["DateTime"], axis=1, inplace=True)
-    
-    return X, y
 
 def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
     data_loader = TimeSeriesDataLoader(
@@ -74,7 +47,7 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
     return data_loader
     
 #=================================#
-# End of methods defination parts #
+# End of methods definition parts #
 #=================================#
 
 #----------------------------#
@@ -85,20 +58,24 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
 DATA_HOME_PATH = "../../../data/highway_etc_traffic/eda_data/"
 
 # model direction
-MODEL_SAVE_FILE = '../../../model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_10days.pickle'
-MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
-MODEL_SAVE_NAME = 'sklearn_rfc_etc_data_2020_10_10days_test_model_master.pickle'
+# SKLEARN_MODEL_SAVE_FILE = '../../../model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_10days.pickle'
+SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
+SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_etc_data_2020_10_10days.pickle'
+
+RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
+RIVER_MODEL_SAVE_NAME = 'river_adarf_etc_data_2020_10_10days.pickle'
+
 # MODEL_SAVE_FILE = './model_store/river/adarf/river_adarf_etc_data_2020_10.pickle'
 
 # output plot direction
-OUTPUT_PREDPROBA_DIST_PLOT = '../../../output_plot/highway_pred_proba_distribution_test.pdf'
-OUTPUT_TREND_PLOT = '../../../output_plot/trend_test.pdf'
+# OUTPUT_PREDPROBA_DIST_PLOT = '../../../output_plot/highway_pred_proba_distribution_test.pdf'
+# OUTPUT_TREND_PLOT = '../../../output_plot/trend_test.pdf'
 
 #----------------------------------------------------------#
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
 
-datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 23)))
+datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 22)))
 
 feature_to_drop = [
     "TrafficJam",
@@ -115,14 +92,14 @@ feature_to_drop = [
     "Downstream3MeanSpeed"
 ]
 
-# model_master_sklearn = SklearnRandomForestClassifierTrainer(
-#     training_data_path=datapaths_training,
-#     model_saving_dir=MODEL_SAVE_DIR,
-#     model_name=MODEL_SAVE_NAME,
-#     n_tree=100, max_depth=20, criterion='gini',
-#     training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
-#     features_to_drop=feature_to_drop
-# )
+model_master_sklearn = SklearnRandomForestClassifierTrainer(
+    training_data_path=datapaths_training,
+    model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
+    model_name=SKLEARN_MODEL_SAVE_DIR,
+    n_tree=100, max_depth=20, criterion='gini',
+    training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
+    features_to_drop=feature_to_drop
+)
 
 model_master_river = RiverAdaRandomForestClassifier(
     training_data_path=datapaths_training,
@@ -134,157 +111,91 @@ model_master_river = RiverAdaRandomForestClassifier(
 )
 
 
-# model = model_master_sklearn.get_model()
-model = model_master_river.get_model()
+model_sklearn = model_master_sklearn.get_model()
+model_river = model_master_river.get_model()
 
-
-#-----------------------------------------#
-# Original model training and preparation #
-#-----------------------------------------#
-
-# if path.isfile(MODEL_SAVE_FILE):
-#
-#     print("persist model file {} is found ! loaded model from file, going to do prediction".format(MODEL_SAVE_FILE))
-#     with open(MODEL_SAVE_FILE, 'rb') as f:
-#         model = pickle.load(f)
-#
-# else:
-#     print("persist model file {} not found! create and doing training process!".format(MODEL_SAVE_FILE))
-#
-#     #======================#
-#     # Model initialization #
-#     #======================#
-#     model = RandomForestClassifier(
-#         n_estimators=500,
-#         criterion="gini",
-#         max_depth=30,
-#         random_state=42,
-#         n_jobs=-1,
-#         verbose=1
-#     )
-#     # model = ensemble.AdaptiveRandomForestClassifier(
-#     #     n_models=500,
-#     #     max_depth=30,
-#     #     split_criterion='gini',
-#     #     grace_period = 2000
-#     # )
-#
-#     datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 22)))
-#
-#     # X, y = preparation_data_for_test(datapaths_training)
-#     # model.fit(X, y)
-#
-#     # Data loader preparation
-#     data_loader = prepare_dataloader_for_test(datapaths_training)
-#     sub_df_by_date = data_loader.sub_df_by_time_interval('2020-10-01', '2020-10-10')
-#
-#     X = sub_df_by_date
-#     y = X.pop("TrafficJam60MinLater")
-#     X.drop(["DateTime"], axis=1, inplace=True)
-#
-#     model.fit(X, y)
-    
-    #========================#
-    # Splitting data by date #
-    #========================#
-    # for i_date in data_loader.get_distinct_date_set_list():
-    #     print('going to running date: {}'.format(i_date))
-    #     sub_df_by_date = data_loader.get_sub_df_by_date(i_date)
-    #     X = sub_df_by_date
-    #     y = X.pop("TrafficJam60MinLater")
-    #     X.drop(["DateTime"], axis=1, inplace=True)
-        
-    #     for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
-    #         try:
-    #             model.learn_one(raw, y[index])
-    #         except:
-    #             print("error happen")
-
-    #     with open(MODEL_SAVE_FILE, 'wb') as f:
-    #         pickle.dump(model, f)
-    
-    #=======================#
-    # End of Training Model #
-    #=======================#
+model_master_sklearn.save_model()
+model_master_river.save_model()
     
     
 #====================================#
 # End of Model Training/Preparation, #
-# Going to do model validation.      #
-#====================================#
+# # Going to do model validation.      #
+# #====================================#
+#
+# datapaths_testing = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(22, 23)))
+# data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
+#
+#
+# X_test, y_test = preparation_data_for_test(datapaths_testing)
+# pred_proba_result = model.predict_proba(X_test)
+#
+# pred_proba_result_true_class = pred_proba_result[y_test == 1][:, 1]
+# pred_proba_result_false_class = pred_proba_result[y_test == 0][:, 1]
+#
+# #====================================#
+# # Visualization of model performance #
+# #====================================#
+# from tools.model_perform_visualization import PredictionProbabilityDist
+#
+# draw_pred_proba = PredictionProbabilityDist(pred_proba_result, y_test)
+#
+# draw_pred_proba.draw_proba_dist_by_true_false_class_seperated()
+# draw_pred_proba.show_plt()
+# draw_pred_proba.save_fig(OUTPUT_PREDPROBA_DIST_PLOT)
+#
+#
+# #================================#
+# # Drawing acc trend plot by date #
+# #================================#
+# from sklearn.metrics import accuracy_score
+# from sklearn.metrics import recall_score
+# from sklearn.metrics import f1_score
+#
+#
+#
+# num_target_list = []
+# acc_trend_list = []
+# recall_trend_list = []
+# recall_uncertainty_list = []
+# f_1_score_list = []
+#
+# for i_date in data_loader_for_test.get_distinct_date_set_list():
+#     sub_df_by_date = data_loader_for_test.get_sub_df_by_date(i_date)
+#     X_test = sub_df_by_date
+#     y_test = X_test.pop("TrafficJam60MinLater")
+#     X_test.drop(["DateTime"], axis=1, inplace=True)
+#
+#     pred_proba_result = model.predict_proba(X_test)
+#
+#     pred_proba_casting_binary = list(map(lambda x : 0 if x < 0.4 else 1, pred_proba_result[:, 1]))
+#
+#     num_target = y_test.tolist().count(1)
+#
+#     acc = accuracy_score(y_test, pred_proba_casting_binary)
+#     recall = recall_score(y_test, pred_proba_casting_binary)
+#     recall_uncertainty = math.sqrt((recall)*(1-recall)/num_target)
+#     f_1_score = f1_score(y_test, pred_proba_casting_binary, average='weighted')
+#
+#     print("accuracy: {}%".format(acc*100))
+#     print("recall rate: {}%".format(recall*100))
+#     print("f1 score: {}".format(f_1_score))
+#
+#     num_target_list.append(num_target)
+#     acc_trend_list.append(acc*100)
+#     recall_trend_list.append(recall*100)
+#     recall_uncertainty_list.append(recall_uncertainty*100)
+#     f_1_score_list.append(f_1_score*100)
+#
+#
+# from tools.model_perform_visualization import TrendPlot
+#
+# x_list = data_loader_for_test.get_distinct_date_set_list()
+#
+# trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+# trend_plot.plot_trend(x_list, acc_trend_list,  label="accuracy")
+# trend_plot.plot_trend_with_error_bar(x_list, recall_trend_list, yerr=recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
+# # trend_plot.plot_bar(x_list, num_target_list)
+# trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=OUTPUT_TREND_PLOT)
 
-datapaths_testing = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(22, 23)))
 
-
-X_test, y_test = preparation_data_for_test(datapaths_testing)
-pred_proba_result = model.predict_proba(X_test)
-
-pred_proba_result_true_class = pred_proba_result[y_test == 1][:, 1]
-pred_proba_result_false_class = pred_proba_result[y_test == 0][:, 1]
-
-#====================================#
-# Visualization of model performance #
-#====================================#
-from tools.model_perform_visualization import PredictionProbabilityDist
-
-draw_pred_proba = PredictionProbabilityDist(pred_proba_result, y_test)
-
-draw_pred_proba.draw_proba_dist_by_true_false_class_seperated()
-draw_pred_proba.show_plt()
-draw_pred_proba.save_fig(OUTPUT_PREDPROBA_DIST_PLOT)
-
-
-#================================#
-# Drawing acc trend plot by date #
-#================================#
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-
-data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
-
-num_target_list = []
-acc_trend_list = []
-recall_trend_list = []
-recall_uncertainty_list = []
-f_1_score_list = []
-
-for i_date in data_loader_for_test.get_distinct_date_set_list():
-    sub_df_by_date = data_loader_for_test.get_sub_df_by_date(i_date)
-    X_test = sub_df_by_date
-    y_test = X_test.pop("TrafficJam60MinLater")
-    X_test.drop(["DateTime"], axis=1, inplace=True)
-    
-    pred_proba_result = model.predict_proba(X_test)
-    
-    pred_proba_casting_binary = list(map(lambda x : 0 if x < 0.4 else 1, pred_proba_result[:, 1]))
-    
-    num_target = y_test.tolist().count(1)
-    
-    acc = accuracy_score(y_test, pred_proba_casting_binary)
-    recall = recall_score(y_test, pred_proba_casting_binary)
-    recall_uncertainty = math.sqrt((recall)*(1-recall)/num_target)
-    f_1_score = f1_score(y_test, pred_proba_casting_binary, average='weighted')
-
-    print("accuracy: {}%".format(acc*100))
-    print("recall rate: {}%".format(recall*100))
-    print("f1 score: {}".format(f_1_score))
-    
-    num_target_list.append(num_target)
-    acc_trend_list.append(acc*100)
-    recall_trend_list.append(recall*100)
-    recall_uncertainty_list.append(recall_uncertainty*100)
-    f_1_score_list.append(f_1_score*100)
-
-
-from tools.model_perform_visualization import TrendPlot
-
-x_list = data_loader_for_test.get_distinct_date_set_list()
-
-trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot.plot_trend(x_list, acc_trend_list,  label="accuracy")
-trend_plot.plot_trend_with_error_bar(x_list, recall_trend_list, yerr=recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
-# trend_plot.plot_bar(x_list, num_target_list)
-trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=OUTPUT_TREND_PLOT)
-
-model_master_sklearn.save_model()
