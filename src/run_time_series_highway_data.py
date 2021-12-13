@@ -81,7 +81,8 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
 
-MODEL_SAVE_FILE = './model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_12.pickle'
+MODEL_SAVE_FILE = './model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_10days.pickle'
+# MODEL_SAVE_FILE = './model_store/river/adarf/river_adarf_etc_data_2020_10.pickle'
 if path.isfile(MODEL_SAVE_FILE):
     
     print("persist model file {} is found ! loaded model from file, going to do prediction".format(MODEL_SAVE_FILE))
@@ -105,19 +106,44 @@ else:
     # model = ensemble.AdaptiveRandomForestClassifier(
     #     n_models=500,
     #     max_depth=30,
-    #     split_criterion='gini'
+    #     split_criterion='gini',
+    #     grace_period = 2000
     # )
 
-    datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 24)))
+    datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 22)))
     
-    X, y = preparation_data_for_test(datapaths_training)
+    # X, y = preparation_data_for_test(datapaths_training)
+    # model.fit(X, y)
+    
+    
+    data_loader_incremental_training = prepare_dataloader_for_test(datapaths_training)
+    
+    sub_df_by_date = data_loader_incremental_training.sub_df_by_time_interval('2020-10-01', '2020-10-10')
+    
+    X = sub_df_by_date
+    y = X.pop("TrafficJam60MinLater")
+    X.drop(["DateTime"], axis=1, inplace=True)
+    
     model.fit(X, y)
     
-    # for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
-    #     model.learn_one(raw, y[index])
+    #========================#
+    # Splitting data by date #
+    #========================#
+    # for i_date in data_loader_incremental_training.get_distinct_date_set_list():
+    #     print('going to running date: {}'.format(i_date))
+    #     sub_df_by_date = data_loader_incremental_training.get_sub_df_by_date(i_date)
+    #     X = sub_df_by_date
+    #     y = X.pop("TrafficJam60MinLater")
+    #     X.drop(["DateTime"], axis=1, inplace=True)
+        
+    #     for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
+    #         try:
+    #             model.learn_one(raw, y[index])
+    #         except:
+    #             print("error happen")
 
-    # with open(MODEL_SAVE_FILE, 'wb') as f:
-    #     pickle.dump(model, f)
+    #     with open(MODEL_SAVE_FILE, 'wb') as f:
+    #         pickle.dump(model, f)
     
     #=======================#
     # End of Training Model #
@@ -129,7 +155,7 @@ else:
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(24, 30)))
+datapaths_testing = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(22, 23)))
 
 
 # X_test, y_test = preparation_data_for_test(datapaths_testing)
