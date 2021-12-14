@@ -177,7 +177,8 @@ class TimeSeriesDataLoader(DataLoader):
         :return: self._op_df
         :rtype: pd.Dataframe
         """
-        return self._op_df
+        full_set_df = self._op_df
+        return full_set_df
     
     def get_sub_df_by_date(self, selected_date) -> pd.DataFrame:
         """

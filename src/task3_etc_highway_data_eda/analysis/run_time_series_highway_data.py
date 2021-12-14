@@ -4,6 +4,8 @@ from tools.data_loader import TimeSeriesDataLoader
 from tqdm import tqdm
 
 from model_trainer_reader import SklearnRandomForestClassifierTrainer, RiverAdaRandomForestClassifier
+from model_evaluator import SklearnModelEvaluator, RiverModelEvaluator
+
 
 import math
 import pickle
@@ -65,10 +67,12 @@ SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_etc_data_2020_10_10days.pickle'
 RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
 RIVER_MODEL_SAVE_NAME = 'river_adarf_etc_data_2020_10_10days.pickle'
 
+LABEL = "TrafficJam60MinLater"
+
 # MODEL_SAVE_FILE = './model_store/river/adarf/river_adarf_etc_data_2020_10.pickle'
 
 # output plot direction
-# OUTPUT_PREDPROBA_DIST_PLOT = '../../../output_plot/highway_pred_proba_distribution_test.pdf'
+OUTPUT_DIR = '../../../output_plot/'
 # OUTPUT_TREND_PLOT = '../../../output_plot/trend_test.pdf'
 
 #----------------------------------------------------------#
@@ -95,7 +99,7 @@ feature_to_drop = [
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     training_data_path=datapaths_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
-    model_name=SKLEARN_MODEL_SAVE_DIR,
+    model_name=SKLEARN_MODEL_SAVE_NAME,
     n_tree=100, max_depth=20, criterion='gini',
     training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
     features_to_drop=feature_to_drop
@@ -114,19 +118,30 @@ model_master_river = RiverAdaRandomForestClassifier(
 model_sklearn = model_master_sklearn.get_model()
 model_river = model_master_river.get_model()
 
-model_master_sklearn.save_model()
-model_master_river.save_model()
+# model_master_sklearn.save_model()
+# model_master_river.save_model()
     
     
 #====================================#
 # End of Model Training/Preparation, #
-# # Going to do model validation.      #
-# #====================================#
-#
-# datapaths_testing = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(22, 23)))
-# data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
-#
-#
+# Going to do model validation.      #
+#====================================#
+
+datapaths_testing = list(map(lambda x: combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(22, 23)))
+data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
+
+# sklearn_evaluator = SklearnModelEvaluator(
+#     model_sklearn, data_loader_for_test, LABEL
+# )
+# sklearn_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'sklearn_pred_proba_plot.pdf')
+# sklearn_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'sklearn_trend_plot.pdf')
+
+river_evaluator = RiverModelEvaluator(
+    model_river, data_loader_for_test, LABEL
+)
+river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
+river_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'river_trend_plot.pdf')
+
 # X_test, y_test = preparation_data_for_test(datapaths_testing)
 # pred_proba_result = model.predict_proba(X_test)
 #

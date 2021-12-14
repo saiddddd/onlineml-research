@@ -123,6 +123,7 @@ class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
             '''
             in case of model location exist, check parameters are identical
             '''
+            print('Model exist')
             with open(self._model_location, 'rb') as f:
                 self._model = pickle.load(f)
                 try:
@@ -135,6 +136,7 @@ class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
                     '''
                     if model parameters are not identical, recreate model and re-train
                     '''
+                    print('model hyper parameter issue, recreate and retrain model')
                     # recreate model
                     del self._model
                     self._create_model()
