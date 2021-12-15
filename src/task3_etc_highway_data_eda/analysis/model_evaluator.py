@@ -77,6 +77,25 @@ class SklearnModelEvaluator(ModelEvaluator):
 
         if save_plot_path is not None:
             trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=save_plot_path)
+            
+        
+    def predict_by_date(self, i_date, proba_cut = 0.5):
+        sub_df_by_date = self._data_loader_for_testing.get_sub_df_by_date(i_date)
+        X_test = copy.deepcopy(sub_df_by_date)
+        y_test = X_test.pop(self._label)
+        X_test.drop(["DateTime"], axis=1, inplace=True)
+
+        pred_proba_result = self._model.predict_proba(X_test)
+
+        pred_proba_casting_binary = list(map(lambda x: 0 if x < proba_cut else 1, pred_proba_result[:, 1]))
+        num_target = y_test.tolist().count(1)
+
+        acc = accuracy_score(y_test, pred_proba_casting_binary)
+        recall = recall_score(y_test, pred_proba_casting_binary)
+        recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
+        f1_s = f1_score(y_test, pred_proba_casting_binary, average='weighted')
+        
+        return acc, recall, recall_uncertainty, f1_s
 
 
 
@@ -120,7 +139,13 @@ class RiverModelEvaluator(ModelEvaluator):
 
             pred_proba_result = []
             for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
-                pred_proba_result_element = self._model.predict_one(raw)
+                try:
+                    pred_proba_result_element = self._model.predict_proba_one(raw)
+                    self._model.learn_one(raw, y_test[index])
+                except:
+                    print("error happen")
+                    pred_proba_result_element = [0.5,0.5]
+                    
                 pred_proba_result.append(pred_proba_result_element)
 
             pred_proba_casting_binary = list(map(lambda x: 0 if x < 0.4 else 1, pred_proba_result[:, 1]))
@@ -136,6 +161,14 @@ class RiverModelEvaluator(ModelEvaluator):
             recall_trend_list.append(recall * 100)
             recall_uncertainty_list.append(recall_uncertainty * 100)
             f1_score_list.append(f1_s)
+            
+            x_list = self._data_loader_for_testing.get_distinct_date_set_list()
+            trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+            trend_plot.plot_trend(x_list, acc_trend_list, label="accuracy")
+            trend_plot.plot_trend_with_error_bar(x_list, recall_trend_list, yerr=recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
+
+            if save_plot_path is not None:
+                trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=save_plot_path+'_'+str(i_date)+'.pdf')
 
         x_list = self._data_loader_for_testing.get_distinct_date_set_list()
         trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
@@ -143,4 +176,33 @@ class RiverModelEvaluator(ModelEvaluator):
         trend_plot.plot_trend_with_error_bar(x_list, recall_trend_list, yerr=recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
 
         if save_plot_path is not None:
-            trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=save_plot_path)
+            trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=save_plot_path+'.pdf')
+            
+            
+    def predict_by_date(self, i_date, proba_cut = 0.5):
+        
+        sub_df_by_date = self._data_loader_for_testing.get_sub_df_by_date(i_date)
+        X_test = copy.deepcopy(sub_df_by_date)
+        y_test = X_test.pop(self._label)
+        X_test.drop(["DateTime"], axis=1, inplace=True)
+
+        pred_proba_result = []
+        for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
+            try:
+                pred_proba_result_element = self._model.predict_proba_one(raw)
+                self._model.learn_one(raw, y_test[index])
+            except:
+                print("error happen")
+                pred_proba_result_element = [0.5,0.5]
+                
+            pred_proba_result.append(pred_proba_result_element)
+
+        pred_proba_casting_binary = list(map(lambda x: 0 if x < 0.4 else 1, pred_proba_result[:, 1]))
+        num_target = y_test.tolist().count(1)
+
+        acc = accuracy_score(y_test, pred_proba_casting_binary)
+        recall = recall_score(y_test, pred_proba_casting_binary)
+        recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
+        f1_s = f1_score(y_test, pred_proba_casting_binary, average='weighted')
+        
+        return acc, recall, recall_uncertainty, f1_s

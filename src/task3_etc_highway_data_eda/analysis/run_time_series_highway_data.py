@@ -57,14 +57,14 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
 #----------------------------#
 
 # data paths
-DATA_HOME_PATH = "../../../data/highway_etc_traffic/eda_data/"
+DATA_HOME_PATH = "../data/highway_etc_traffic/eda_data/"
 
 # model direction
 # SKLEARN_MODEL_SAVE_FILE = '../../../model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_10days.pickle'
-SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
+SKLEARN_MODEL_SAVE_DIR = '../model_store/sklearn/rfc/'
 SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_etc_data_2020_10_10days.pickle'
 
-RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
+RIVER_MODEL_SAVE_DIR = '../model_store/river/adarf/'
 RIVER_MODEL_SAVE_NAME = 'river_adarf_etc_data_2020_10_10days.pickle'
 
 LABEL = "TrafficJam60MinLater"
@@ -72,7 +72,7 @@ LABEL = "TrafficJam60MinLater"
 # MODEL_SAVE_FILE = './model_store/river/adarf/river_adarf_etc_data_2020_10.pickle'
 
 # output plot direction
-OUTPUT_DIR = '../../../output_plot/'
+OUTPUT_DIR = '../output_plot/'
 # OUTPUT_TREND_PLOT = '../../../output_plot/trend_test.pdf'
 
 #----------------------------------------------------------#
@@ -107,8 +107,8 @@ model_master_sklearn = SklearnRandomForestClassifierTrainer(
 
 model_master_river = RiverAdaRandomForestClassifier(
     training_data_path=datapaths_training,
-    model_saving_dir='../../../model_store/river/adarf/',
-    model_name='river_adarf_etc_data_2020_10_10days_test_model_master.pickle',
+    model_saving_dir=RIVER_MODEL_SAVE_DIR,
+    model_name=RIVER_MODEL_SAVE_NAME,
     n_tree=100, max_depth=20, criterion='gini',
     training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
     features_to_drop=feature_to_drop
@@ -139,8 +139,8 @@ data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
 river_evaluator = RiverModelEvaluator(
     model_river, data_loader_for_test, LABEL
 )
-river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
-river_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'river_trend_plot.pdf')
+# river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
+river_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'river_trend_plot')
 
 # X_test, y_test = preparation_data_for_test(datapaths_testing)
 # pred_proba_result = model.predict_proba(X_test)
