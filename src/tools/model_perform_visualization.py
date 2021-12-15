@@ -13,8 +13,8 @@ class PredictionProbabilityDist:
         
     def draw_proba_dist_by_true_false_class_seperated(self):
         
-        pred_proba_result_true_class = self._pred_proba_result_list[self._target_list == 1][:, 1]
-        pred_proba_result_false_class = self._pred_proba_result_list[self._target_list == 0][:, 1]
+        pred_proba_result_true_class = self._pred_proba_result_list[self._target_list == 1]
+        pred_proba_result_false_class = self._pred_proba_result_list[self._target_list == 0]
         
         plt.figure(figsize=(14, 4))
         plt.suptitle('highway_traffic_pred_proba_distribution'+"_sklearn")
