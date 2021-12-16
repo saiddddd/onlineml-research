@@ -207,7 +207,6 @@ class RiverModelEvaluator(ModelEvaluator):
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
             try:
                 pred_proba_result_element = self._model.predict_proba_one(raw).get(1)
-                print(pred_proba_result_element)
                 self._model.learn_one(raw, y_test[index])
             except:
                 print("error happen")

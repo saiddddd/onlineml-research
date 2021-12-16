@@ -58,14 +58,14 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
 #----------------------------#
 
 # data paths
-DATA_HOME_PATH = "../../../data/highway_etc_traffic/eda_data/"
+DATA_HOME_PATH = "../data/highway_etc_traffic/eda_data/"
 
 # model direction
 # SKLEARN_MODEL_SAVE_FILE = '../../../model_store/sklearn/rfc/sklearn_rfc_etc_data_2020_10_10days.pickle'
-SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
+SKLEARN_MODEL_SAVE_DIR = '../model_store/sklearn/rfc/'
 SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_etc_data_2020_10_10days.pickle'
 
-RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
+RIVER_MODEL_SAVE_DIR = '../model_store/river/adarf/'
 RIVER_MODEL_SAVE_NAME = 'river_adarf_etc_data_2020_10_10days.pickle'
 
 LABEL = "TrafficJam60MinLater"
@@ -73,7 +73,7 @@ LABEL = "TrafficJam60MinLater"
 # MODEL_SAVE_FILE = './model_store/river/adarf/river_adarf_etc_data_2020_10.pickle'
 
 # output plot direction
-OUTPUT_DIR = '../../../output_plot/'
+OUTPUT_DIR = '../output_plot/'
 # OUTPUT_TREND_PLOT = '../../../output_plot/trend_test.pdf'
 
 #----------------------------------------------------------#
@@ -158,9 +158,9 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
 
 x_list = data_loader_for_test.get_distinct_date_set_list()
 trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="accuracy")
-trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
-trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=OUTPUT_DIR+'sklearn_trend_plot.pdf')
+trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="skleanr accuracy")
+trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
+trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'sklearn_trend_plot.pdf')
 
 # sklearn_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'sklearn_trend_plot.pdf')
 
@@ -173,11 +173,17 @@ river_recall_trend_list = []
 river_recall_uncertainty_list = []
 river_f1_score_list = []
 
-for i_date in data_loader_for_test.get_distinct_date_set_list()[0:2]:
+i_date_point = 0
+
+for i_date in data_loader_for_test.get_distinct_date_set_list():
     # ===========================================================================#
     # Running prediction probability by date and return daily acc, recall, etc. #
     # ===========================================================================#
 
+    print("running river accumulating training with date:{}".format(str(i_date)))
+
+    i_date_point += 1
+    
     pred_result, y_test = river_evaluator.predict_proba_true_class_by_date(i_date)
 
     acc, recall, recall_uncertainty, f1_s = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.4)
@@ -186,12 +192,22 @@ for i_date in data_loader_for_test.get_distinct_date_set_list()[0:2]:
     river_recall_trend_list.append(recall * 100)
     river_recall_uncertainty_list.append(recall_uncertainty * 100)
     river_f1_score_list.append(f1_s)
+    
+    x_list_incremental = data_loader_for_test.get_distinct_date_set_list()[:i_date_point]
+    trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+    trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="skleanr accuracy")
+    trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
+    trend_plot.plot_trend(x_list_incremental, river_acc_trend_list, label="river accuracy")
+    trend_plot.plot_trend_with_error_bar(x_list_incremental, river_recall_trend_list, yerr=river_recall_uncertainty_list, markersize=4, capsize=2, label="river recall")
+    trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'river_append_trend_plot_accumulated_date_'+str(i_date)+'.pdf')
 
-x_list = data_loader_for_test.get_distinct_date_set_list()[0:2]
-# trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot.plot_trend(x_list, river_acc_trend_list, label="accuracy")
-trend_plot.plot_trend_with_error_bar(x_list, river_recall_trend_list, yerr=river_recall_uncertainty_list, markersize=4, capsize=2, label="recall rate")
-trend_plot.save_fig(title="Acc Trend Plot", save_fig_path=OUTPUT_DIR+'river_append_trend_plot.pdf')
+x_list = data_loader_for_test.get_distinct_date_set_list()
+trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="skleanr accuracy")
+trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
+trend_plot.plot_trend(x_list, river_acc_trend_list, label="river accuracy")
+trend_plot.plot_trend_with_error_bar(x_list, river_recall_trend_list, yerr=river_recall_uncertainty_list, markersize=4, capsize=2, label="river recall")
+trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'river_append_trend_plot.pdf')
 
 # river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
 # river_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'river_trend_plot')
