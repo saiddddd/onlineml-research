@@ -59,15 +59,22 @@ class ModelEvaluator(abc.ABC):
 
     @staticmethod
     def get_model_score_by_daily_subset(pred_proba_result, y_test, proba_cut=0.5):
-        pred_proba_casting_binary = list(map(lambda x: 0 if x < proba_cut else 1, pred_proba_result))
-        num_target = y_test.tolist().count(1)
+        
+        try:
+            pred_proba_casting_binary = list(map(lambda x: 0 if x < proba_cut else 1, pred_proba_result))
+            if isinstance(y_test, list):
+                num_target = y_test.count(1)
+            else:
+                num_target = y_test.tolist().count(1)
 
-        acc = accuracy_score(y_test, pred_proba_casting_binary)
-        recall = recall_score(y_test, pred_proba_casting_binary)
-        recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
-        f1_s = f1_score(y_test, pred_proba_casting_binary, average='weighted')
+            acc = accuracy_score(y_test, pred_proba_casting_binary)
+            recall = recall_score(y_test, pred_proba_casting_binary)
+            recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
+            f1_s = f1_score(y_test, pred_proba_casting_binary, average='weighted')
 
-        return acc, recall, recall_uncertainty, f1_s
+            return acc, recall, recall_uncertainty, f1_s
+        except:
+            breakpoint()
 
 class SklearnModelEvaluator(ModelEvaluator):
     def __init__(self, model, data_loader_for_testing, label):
@@ -196,25 +203,41 @@ class RiverModelEvaluator(ModelEvaluator):
             pred_proba_result.append(pred_proba_result_element)
         return pred_proba_result, y_test
             
-    def predict_proba_true_class_by_date(self, i_date, proba_cut=0.5):
+    def predict_proba_true_class_by_date(self, i_date):
 
         sub_df_by_date = self._data_loader_for_testing.get_sub_df_by_date(i_date)
         X_test = copy.deepcopy(sub_df_by_date)
         y_test = X_test.pop(self._label)
         X_test.drop(["DateTime"], axis=1, inplace=True)
 
-        pred_proba_result = []
+        pred_proba_result_list = []
+        corresponding_ans = []
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
             try:
-                pred_proba_result_element = self._model.predict_proba_one(raw).get(1)
+                pred_proba_result = self._model.predict_proba_one(raw)
+                if isinstance(pred_proba_result, dict):
+                    if isinstance(pred_proba_result.get(1), float):
+                        pred_proba_result_list.append(pred_proba_result.get(1))
+                        corresponding_ans.append(y_test[index])
+                    elif isinstance(pred_proba_result.get(1), None):
+                        continue
+                elif isinstance(pred_proba_result, list):
+                    pred_proba_result_list.append(pred_proba_result[:, 1])
+                    corresponding_ans.append(y_test[index])
+                elif isinstance(pred_proba_result, float) or isinstance(pred_proba_result, int):
+                    print("Unexpect river model prediction result in float and int type")
+                # learn by this observation
+                elif isinstance(pred_proba_result, None):
+                    print("river molde prediction result get None Type")
                 self._model.learn_one(raw, y_test[index])
             except:
                 print("error happen")
-                pred_proba_result_element = 0.0
-
-            pred_proba_result.append(pred_proba_result_element)
-
-        return pred_proba_result, y_test
+                
+        if all(isinstance(x, float) for x in pred_proba_result_list):
+            return pred_proba_result_list, corresponding_ans
+        else:
+            print("river model prediction probabality cause error, not all return result provide float type!!, check")
+            raise RuntimeError
         
         # sub_df_by_date = self._data_loader_for_testing.get_sub_df_by_date(i_date)
         # X_test = copy.deepcopy(sub_df_by_date)
