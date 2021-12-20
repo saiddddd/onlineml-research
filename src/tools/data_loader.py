@@ -4,7 +4,9 @@ from abc import abstractmethod, ABC
 import pandas as pd
 import numpy as np
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
 
 from time import time
 
@@ -117,6 +119,18 @@ class TimeSeriesDataLoader(DataLoader):
         for col in self._op_df:
             if self._op_df[col].dtype == 'object':
                 self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
+
+
+    def do_one_hot_encoding_by_col(self, col_name: str):
+        """
+        To do one-hot encoding on specific column, inplace operation
+        :param col_name: the column which is going to do one hot encoding
+        :return:
+        """
+        one_hot_encode_df = pd.get_dummies(self._op_df[col_name], prefix=col_name)
+        self._op_df = self._op_df.join(one_hot_encode_df)
+        self._op_df.drop(columns=[col_name], axis=1, inplace=True)
+
         
     def drop_feature(self, feature_to_drop):
         """
@@ -237,41 +251,15 @@ class TimeSeriesDataLoader(DataLoader):
 
 if __name__ == '__main__':
 
-    from river import tree
-
-    model = tree.HoeffdingTreeClassifier()
-
     data_loader = TimeSeriesDataLoader(
-        "data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2021_01.csv",
+        "../../data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2020_12.csv",
         time_series_column_name="DateTime", time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
     )
 
+    data_loader.do_one_hot_encoding_by_col('Hour')
 
-    # while True:
-    #     try:
-    #         next_time = data_loader.get_next_time_set_iteration()
-    #         sub_df = data_loader.sub_df_by_time_interval(next_time)
-    #         target_y = sub_df.pop("TrafficJam60MinLater")
-
-    #         print("feeding data with time :{}".format(pd.to_datetime(next_time)))
-
-    #         for index, row in sub_df.iterrows():
-    #             model.learn_one(row, target_y[index])
-
-    #     except StopIteration:
-    #         break
+    df = data_loader.get_full_df()
     
-    # while True:
-        
-    #     try:
-    #         next_date = data_loader.get_next_date_set_iterator()
-    #         sub_df = data_loader.sub_df_by_time_interval(next_date)
-    #         print(sub_df)
-            
-    #     except StopIteration:
-    #         break
+    print(df)
 
-    next_date = data_loader.get_next_date_from_iteration()
-    sub_df = data_loader.get_sub_df_by_date(next_date)
-    
-    print(sub_df)
+    df.to_csv("../../data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2020_12_hour_onehotencoding.csv")
