@@ -1,6 +1,7 @@
 import abc
 import math
 import copy
+import numpy as np
 from tqdm import tqdm
 
 from tools.model_perform_visualization import PredictionProbabilityDist, TrendPlot
@@ -70,7 +71,7 @@ class ModelEvaluator(abc.ABC):
             acc = accuracy_score(y_test, pred_proba_casting_binary)
             recall = recall_score(y_test, pred_proba_casting_binary)
             recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
-            f1_s = f1_score(y_test, pred_proba_casting_binary, average='weighted')
+            f1_s = f1_score(y_test, pred_proba_casting_binary)
 
             return acc, recall, recall_uncertainty, f1_s
         except:
@@ -197,11 +198,17 @@ class RiverModelEvaluator(ModelEvaluator):
 
     def predict_proba_true_class_full_set(self):
         X_test, y_test = self.get_testing_x_y_full_set()
-        pred_proba_result = []
+        pred_proba_result_list = []
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
-            pred_proba_result_element = self._model.predict_proba_one(raw).get(1)
-            pred_proba_result.append(pred_proba_result_element)
-        return pred_proba_result, y_test
+            try:
+                pred_proba_result = self._model.predict_proba_one(raw)
+                if isinstance(pred_proba_result, dict):
+                    pred_proba_result_list.append(pred_proba_result.get(1))
+                
+            except:
+                print("error happen")
+        
+        return np.array(pred_proba_result_list), y_test
             
     def predict_proba_true_class_by_date(self, i_date):
 
@@ -215,6 +222,9 @@ class RiverModelEvaluator(ModelEvaluator):
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
             try:
                 pred_proba_result = self._model.predict_proba_one(raw)
+                if (pred_proba_result.get(1) > 0.4):
+                    print(pred_proba_result)
+                    print(pred_proba_result.get(1))
                 if isinstance(pred_proba_result, dict):
                     if isinstance(pred_proba_result.get(1), float):
                         pred_proba_result_list.append(pred_proba_result.get(1))

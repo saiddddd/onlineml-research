@@ -45,6 +45,7 @@ class ModelTrainerReader(abc.ABC):
             time_series_column_name=time_series_col_name,
             time_format=time_format
         )
+        # self._data_loader.do_one_hot_encoding_by_col("Hour")
         self._label = label_col
 
         #------------------------------------------------#
@@ -227,7 +228,7 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
             n_models=self._n_tree,
             max_depth=self._max_depth,
             split_criterion=self._criterion,
-            grace_period=2000
+            grace_period=100
         )
 
 

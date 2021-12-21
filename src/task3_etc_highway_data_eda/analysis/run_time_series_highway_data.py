@@ -34,6 +34,8 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
         data_path,
         time_series_column_name="DateTime", time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
     )
+    data_loader.drop_feature("DayOfWeek")
+    data_loader.drop_feature("Hour")
     data_loader.drop_feature("TrafficJam")
     data_loader.drop_feature("TrafficJam30MinLater")
     data_loader.drop_feature("MeanSpeed")
@@ -46,6 +48,8 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
     data_loader.drop_feature("Downstream1MeanSpeed")
     data_loader.drop_feature("Downstream2MeanSpeed")
     data_loader.drop_feature("Downstream3MeanSpeed")
+    
+    # data_loader.do_one_hot_encoding_by_col("Hour")
     
     return data_loader
     
@@ -61,7 +65,7 @@ def prepare_dataloader_for_test(data_path) -> TimeSeriesDataLoader:
 DATA_HOME_PATH = "../data/highway_etc_traffic/eda_data/"
 
 # experimental title 
-TRAIN_EXTEND_NAME = 'highway1_neihuw_2021_01_full'
+TRAIN_EXTEND_NAME = 'highway1_neihuw_2020_10_full'
 
 # model direction
 SKLEARN_MODEL_SAVE_DIR = '../model_store/sklearn/rfc/'
@@ -79,9 +83,11 @@ OUTPUT_DIR = '../output_plot/'
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
 
-datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(24, 25)))
+datapaths_training = list(map(lambda x : combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(21, 24)))
 
 feature_to_drop = [
+    "DayOfWeek",
+    "Hour",
     "TrafficJam",
     "TrafficJam30MinLater",
     "MeanSpeed",
@@ -101,7 +107,7 @@ model_master_sklearn = SklearnRandomForestClassifierTrainer(
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
     n_tree=100, max_depth=20, criterion='gini',
-    training_data_start_time='2021-01-01', training_data_end_time='2021-01-31',
+    training_data_start_time='2020-10-01', training_data_end_time='2020-11-01',
     features_to_drop=feature_to_drop
 )
 
@@ -110,7 +116,7 @@ model_master_river = RiverAdaRandomForestClassifier(
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
     n_tree=100, max_depth=20, criterion='gini',
-    training_data_start_time='2021-01-01', training_data_end_time='2021-01-31',
+    training_data_start_time='2020-10-01', training_data_end_time='2020-11-01',
     features_to_drop=feature_to_drop
 )
 
@@ -127,9 +133,13 @@ model_master_river.save_model()
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = list(map(lambda x: combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(25, 30)))
+datapaths_testing = list(map(lambda x: combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(24, 25)))
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
 
+
+#==========================#
+# Evaluating Sklearn model #
+#==========================#
 sklearn_evaluator = SklearnModelEvaluator(
     model_sklearn, data_loader_for_test, LABEL
 )
@@ -152,20 +162,22 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
     sklearn_acc_trend_list.append(acc * 100)
     sklearn_recall_trend_list.append(recall * 100)
     sklearn_recall_uncertainty_list.append(recall_uncertainty * 100)
-    sklearn_f1_score_list.append(f1_s)
+    sklearn_f1_score_list.append(f1_s * 100)
 
 
 x_list = data_loader_for_test.get_distinct_date_set_list()
 trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot.plot_trend(x_list, sklearn_f1_score_list, label="skleanr f1 score")
+trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="sklearn accuracy")
 trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
 trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'sklearn_trend_plot.pdf')
 
-# sklearn_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'sklearn_trend_plot.pdf')
-
+#========================#
+# Evaluating river model #
+#========================#
 river_evaluator = RiverModelEvaluator(
     model_river, data_loader_for_test, LABEL
 )
+river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
 
 river_acc_trend_list = []
 river_recall_trend_list = []
@@ -190,27 +202,25 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
     river_acc_trend_list.append(acc * 100)
     river_recall_trend_list.append(recall * 100)
     river_recall_uncertainty_list.append(recall_uncertainty * 100)
-    river_f1_score_list.append(f1_s)
+    river_f1_score_list.append(f1_s * 100)
     
     if (i_date == '2020-12-01') or (i_date == '2021-01-01') or (i_date == '2021-03-01') or (i_date == '2021-05-01') or (i_date == '2021-07-01') :
         x_list_incremental = data_loader_for_test.get_distinct_date_set_list()[:i_date_point]
         trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-        trend_plot.plot_trend(x_list, sklearn_f1_score_list, label="skleanr f1 score")
+        trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="sklearn accuracy")
         trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
-        trend_plot.plot_trend(x_list_incremental, river_f1_score_list, label="river f1 score")
+        trend_plot.plot_trend(x_list_incremental, river_acc_trend_list, label="river accuracy")
         trend_plot.plot_trend_with_error_bar(x_list_incremental, river_recall_trend_list, yerr=river_recall_uncertainty_list, markersize=4, capsize=2, label="river recall")
         trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'river_append_trend_plot_accumulated_date_'+str(i_date)+'.pdf')
 
 x_list = data_loader_for_test.get_distinct_date_set_list()
 trend_plot = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot.plot_trend(x_list, sklearn_f1_score_list, label="skleanr f1 score")
+trend_plot.plot_trend(x_list, sklearn_acc_trend_list, label="skleanr accuracy")
 trend_plot.plot_trend_with_error_bar(x_list, sklearn_recall_trend_list, yerr=sklearn_recall_uncertainty_list, markersize=4, capsize=2, label="sklearn recall")
-trend_plot.plot_trend(x_list, river_f1_score_list, label="river f1 score")
+trend_plot.plot_trend(x_list, river_acc_trend_list, label="river accuracy")
 trend_plot.plot_trend_with_error_bar(x_list, river_recall_trend_list, yerr=river_recall_uncertainty_list, markersize=4, capsize=2, label="river recall")
 trend_plot.save_fig(title="Acc Trend Plot", x_label='date', y_label='%', save_fig_path=OUTPUT_DIR+'river_append_trend_plot.pdf')
 
-# river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
-# river_evaluator.run_accuracy_and_recall_trend_checker(OUTPUT_DIR+'river_trend_plot')
 
 # date_list = data_loader_for_test.get_distinct_date_set_list()
 # print(date_list[0])
