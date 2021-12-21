@@ -222,9 +222,6 @@ class RiverModelEvaluator(ModelEvaluator):
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
             try:
                 pred_proba_result = self._model.predict_proba_one(raw)
-                if (pred_proba_result.get(1) > 0.4):
-                    print(pred_proba_result)
-                    print(pred_proba_result.get(1))
                 if isinstance(pred_proba_result, dict):
                     if isinstance(pred_proba_result.get(1), float):
                         pred_proba_result_list.append(pred_proba_result.get(1))
