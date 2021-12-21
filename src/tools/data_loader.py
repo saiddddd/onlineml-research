@@ -101,7 +101,6 @@ class TimeSeriesDataLoader(DataLoader):
         """
         self._op_df.sort_values([self._time_series_column_name], ascending=ascending_order)
         self._op_df.reset_index(inplace=True, drop=True)
-        print(self._op_df)
         print("sorting by time in ascending order:{}, successfully".format(ascending_order))
     
     def fill_na_with_zero(self):
@@ -205,9 +204,9 @@ class TimeSeriesDataLoader(DataLoader):
         df = self._op_df[self._op_df[self._time_series_column_name].dt.date == selected_date]
         return df
 
-    def sub_df_by_time_interval(self, start_time, end_time=None) -> pd.DataFrame:
+    def get_sub_df_by_time_interval(self, start_time, end_time=None) -> pd.DataFrame:
         """
-        Extracting the sub-sector of dataframe within a given time interval,
+        Extracting the sub-sector of dataframe from self._op_df within a given time interval,
         inclusive the boundary is True!
 
         :param start_time: selection start time (include)

@@ -2,6 +2,7 @@ import abc
 from os import path
 import pickle
 
+import pandas
 from sklearn.ensemble import RandomForestClassifier
 from river.ensemble import AdaptiveRandomForestClassifier
 
@@ -12,18 +13,18 @@ from tqdm import tqdm
 
 class ModelTrainerReader(abc.ABC):
 
-    def __init__(self, training_data_path, model_saving_dir, model_name,
+    def __init__(self, data_loader, model_saving_dir, model_name,
                  n_tree=100, max_depth=10, criterion='gini',
+                 training_data_start_time=None, training_data_end_time=None,
                  time_series_col_name='DateTime', time_format="%yyyy-%mm-%dd %HH:%MM:%SS",
-                 label_col="TrafficJam60MinLater",
-                 features_to_drop=[]
+                 label_col="TrafficJam60MinLater"
                  ):
 
         """
         Model Trainer and reader, preparation of model for this Time Series Dataset study,
         load or create a new model (and training) we want in cases the model is (NOT) exist.
 
-        :param training_data_path:
+        :param data_loader:
         :param model_saving_dir:
         :param model_name:
         :param n_tree:
@@ -32,7 +33,6 @@ class ModelTrainerReader(abc.ABC):
         :param time_series_col_name:
         :param time_format:
         :param label_col:
-        :param features_to_drop:
         """
 
         self._model = None
@@ -40,20 +40,12 @@ class ModelTrainerReader(abc.ABC):
         self._max_depth = max_depth
         self._criterion = criterion
 
-        self._data_loader = TimeSeriesDataLoader(
-            training_data_path,
-            time_series_column_name=time_series_col_name,
-            time_format=time_format
-        )
+        self._data_loader = data_loader
         # self._data_loader.do_one_hot_encoding_by_col("Hour")
         self._label = label_col
 
-        #------------------------------------------------#
-        # if there have any unwanted features, drop them #
-        #------------------------------------------------#
-        if len(features_to_drop) > 0:
-            for i in features_to_drop:
-                self._data_loader.drop_feature(i)
+        self._training_data_start_time = training_data_start_time
+        self._training_data_end_time = training_data_end_time
 
         if not path.isdir(model_saving_dir):
             print("Critical error! model saving directory: {} is not exist, please provide correct path".format(model_saving_dir))
@@ -65,11 +57,42 @@ class ModelTrainerReader(abc.ABC):
 
     @abc.abstractmethod
     def _create_model(self):
+        """
+        internal function to create model if model is not exist!
+        or, model parameters set is not identical with user given in run time environment
+        :return:
+        """
         pass
 
     @abc.abstractmethod
     def _train_model(self):
+        """
+        training self._model
+        :return:
+        """
         pass
+
+
+    def _prepare_data_to_training(self) -> pandas.DataFrame:
+
+        print("Going to preparing data for training model")
+
+        if (self._training_data_start_time is not None) and (self._training_data_end_time is not None):
+            print("Specify date is found! from start date: {} to end date: {}".format(
+                self._training_data_start_time,
+                self._training_data_end_time
+            ))
+            training_df = self._data_loader.get_sub_df_by_time_interval(self._training_data_start_time,
+                                                                        self._training_data_end_time)
+        else:
+            print("Specify date is not found! Using full dataset to train model ")
+            training_df = self._data_loader.get_full_df()
+
+        X = training_df
+        y = X.pop(self._label)
+        X.drop(["DateTime"], axis=1, inplace=True)
+
+        return X, y
 
     def get_data_loader(self):
         return self._data_loader
@@ -86,23 +109,19 @@ class ModelTrainerReader(abc.ABC):
     
 class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
     
-    def __init__(self, training_data_path, model_saving_dir, model_name,
+    def __init__(self, data_loader, model_saving_dir, model_name,
                  n_tree=100, max_depth=10, criterion='gini',
-                 training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
-                 features_to_drop=[],
+                 training_data_start_time=None, training_data_end_time=None,
                  label_col="TrafficJam60MinLater",
                  time_series_col_name='DateTime', time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
                  ):
 
-        self._training_data_start_time = training_data_start_time
-        self._training_data_end_time = training_data_end_time
-
         super(SklearnRandomForestClassifierTrainer, self).__init__(
-            training_data_path, model_saving_dir, model_name,
+            data_loader, model_saving_dir, model_name,
             n_tree=n_tree, max_depth=max_depth, criterion=criterion,
+            training_data_start_time=training_data_start_time, training_data_end_time=training_data_end_time,
             time_series_col_name=time_series_col_name, time_format=time_format,
-            label_col=label_col,
-            features_to_drop=features_to_drop
+            label_col=label_col
         )
 
         def is_parameter_correct(input_p, model_p):
@@ -167,44 +186,25 @@ class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
 
     def _train_model(self):
 
-        print("Going to Training Sklearn model, from start date: {} to end date: {}".format(
-            self._training_data_start_time,
-            self._training_data_end_time
-        ))
-
-        sub_df_by_date = self._data_loader.sub_df_by_time_interval(
-            self._training_data_start_time,
-            self._training_data_end_time
-        )
-
-        X = sub_df_by_date
-        y = X.pop(self._label)
-        X.drop(["DateTime"], axis=1, inplace=True)
-
-        print(X)
-
+        X, y = self._prepare_data_to_training()
         self._model.fit(X, y)
 
 
 class RiverAdaRandomForestClassifier(ModelTrainerReader):
 
-    def __init__(self, training_data_path, model_saving_dir, model_name,
+    def __init__(self, data_loader, model_saving_dir, model_name,
                  n_tree=100, max_depth=10, criterion='gini',
-                 training_data_start_time='2020-10-01', training_data_end_time='2020-10-10',
-                 features_to_drop=[],
+                 training_data_start_time=None, training_data_end_time=None,
                  label_col="TrafficJam60MinLater",
                  time_series_col_name='DateTime', time_format="%yyyy-%mm-%dd %HH:%MM:%SS"):
 
 
-        self._training_data_start_time = training_data_start_time
-        self._training_data_end_time = training_data_end_time
-
         super(RiverAdaRandomForestClassifier, self).__init__(
-            training_data_path, model_saving_dir, model_name,
+            data_loader, model_saving_dir, model_name,
             n_tree=n_tree, max_depth=max_depth, criterion=criterion,
+            training_data_start_time=training_data_start_time, training_data_end_time=training_data_end_time,
             time_series_col_name=time_series_col_name, time_format=time_format,
-            label_col=label_col,
-            features_to_drop=features_to_drop
+            label_col=label_col
         )
 
         if self._is_model_exist:
@@ -234,20 +234,7 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
 
     def _train_model(self):
 
-        print("Going to Training Sklearn model, from start date: {} to end date: {}".format(
-            self._training_data_start_time,
-            self._training_data_end_time
-        ))
-
-        sub_df_by_date = self._data_loader.sub_df_by_time_interval(
-            self._training_data_start_time,
-            self._training_data_end_time
-        )
-
-        X = sub_df_by_date
-        y = X.pop(self._label)
-        X.drop(["DateTime"], axis=1, inplace=True)
-
+        X, y = self._prepare_data_to_training()
         for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
             try:
                 self._model.learn_one(raw, y[index])
@@ -267,7 +254,7 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
 class ModelParameterException(Exception):
     """the exception that model parameter is not identical between user provided and model loader from persist file"""
 
-    def __init__(self, model, msg=None):
+    def __init__(self, msg=None):
         if msg is None:
             msg = "Model parameter is not identical with user provided"
         super(ModelParameterException, self).__init__(msg)
