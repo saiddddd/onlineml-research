@@ -17,7 +17,7 @@ class PredictionProbabilityDist:
         pred_proba_result_false_class = self._pred_proba_result_list[self._target_list == 0]
         
         plt.figure(figsize=(14, 4))
-        plt.suptitle('highway_traffic_pred_proba_distribution'+"_sklearn")
+        plt.suptitle('highway_traffic_pred_proba_distribution')
         plt.subplot(131)
         plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
         plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
@@ -30,15 +30,17 @@ class PredictionProbabilityDist:
         plt.subplot(132)
         plt.hist(pred_proba_result_true_class, bins=50)
         plt.yscale('log')
+        plt.title('Y True class prediction proba. dist.')
         plt.xlabel('pred proba')
         plt.ylabel('statistics')
         plt.grid()
         plt.subplot(133)
         plt.hist(pred_proba_result_false_class, bins=50)
         plt.yscale('log')
-        plt.grid()
+        plt.title('Y False class prediction proba. dist.')
         plt.xlabel('pred proba')
         plt.ylabel('statistics')
+        plt.grid()
         
     def show_plt(self):
         plt.show

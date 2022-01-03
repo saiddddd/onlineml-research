@@ -6,6 +6,8 @@ from model_evaluator import SklearnModelEvaluator, RiverModelEvaluator
 from tools.model_perform_visualization import TrendPlot, PredictionProbabilityDist
 
 import json
+import numpy as np
+import pandas as pd
 
 DATA_YEAR_MONTH_LIST = [
     '2019_01', '2019_02', '2019_03', '2019_04', '2019_05', '2019_06', #0~6
@@ -52,7 +54,7 @@ def prepare_dataloader_for_test(data_path, drop_feature_list: list) -> TimeSerie
 DATA_HOME_PATH = "../../../data/highway_etc_traffic/eda_data/"
 
 # experimental title 
-TRAIN_EXTEND_NAME = 'highway1_neihuw_2020_10_full'
+TRAIN_EXTEND_NAME = 'highway1_neihuw_2020_10_first_week'
 
 # model direction
 SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
@@ -91,7 +93,7 @@ feature_to_drop = [
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, feature_to_drop)
 
 training_start_date = '2020-10-01'
-training_end_date = '2020-10-31'
+training_end_date = '2020-10-07'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
@@ -113,9 +115,6 @@ model_master_river = RiverAdaRandomForestClassifier(
 model_sklearn = model_master_sklearn.get_model()
 model_river = model_master_river.get_model()
 
-model_master_sklearn.save_model()
-model_master_river.save_model()
-
 # print("Tree basic structure measurements")
 # trees = model_river.models
 #
@@ -130,7 +129,7 @@ model_master_river.save_model()
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = list(map(lambda x: combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(24, 25)))
+datapaths_testing = list(map(lambda x: combine_data_path(DATA_YEAR_MONTH_LIST[x]), range(24, 27)))
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, feature_to_drop)
 
 
@@ -138,8 +137,20 @@ data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, feature_to
 # Evaluating model by prediction probability distribution check #
 #===============================================================#
 def run_prediction_proba(pred_proba_list, y_true_list, save_fig_path=None):
-    draw_pred_proba = PredictionProbabilityDist(pred_proba_list, y_true_list)
+    print("checking out prediction probability distribution by ground truth classified")
+    if isinstance(pred_proba_list, list):
+        print("input probability is list, casting into numpy array")
+        pred_np_array = np.array(pred_proba_list)
+        ground_true = pd.Series(y_true_list)
+    else:
+        print("input probability is numpy array")
+        pred_np_array = pred_proba_list
+        ground_true = y_true_list
+
+    draw_pred_proba = PredictionProbabilityDist(pred_np_array, ground_true)
+    print("going to draw probability distribution")
     draw_pred_proba.draw_proba_dist_by_true_false_class_seperated()
+    print("finish to draw probability distribution")
     if save_fig_path is not None:
         draw_pred_proba.save_fig(save_fig_path)
         print("Saving prediction probability distribution plot at {} successfully".format(save_fig_path))
@@ -161,7 +172,7 @@ run_prediction_proba(predict_full_set, y_test_full_set, OUTPUT_DIR + 'sklearn_pr
 
 #--------------------------------------------------------#
 # Running Accuracy, recall-rate, and f1 score trend plot #
-# --------------------------------------------------------#
+#--------------------------------------------------------#
 sklearn_acc_trend_list = []
 sklearn_recall_trend_list = []
 sklearn_recall_uncertainty_list = []
@@ -200,28 +211,24 @@ river_evaluator = RiverModelEvaluator(
     model_river, data_loader_for_test, LABEL
 )
 
-#------------------------------------------------------------------------------#
-# accumulating prediction proba and corresponding target for plot distribution #
-#------------------------------------------------------------------------------#
-predict_set_appending_accumulating = []
-y_test_set_appending_accumulating = []
+
 #-----------------------------------------------#
 # check out prediction probability distribution #
 #-----------------------------------------------#
 predict_full_set, y_test_full_set = river_evaluator.predict_proba_true_class_full_set()
 run_prediction_proba(predict_full_set, y_test_full_set, OUTPUT_DIR + 'river_pred_proba_plot.pdf')
 
-# predict_set_appending_accumulating.append(predict_full_set)
-# y_test_set_appending_accumulating.append(y_test_full_set)
-
-# river_evaluator.run_prediction_probability_distribution_checker(OUTPUT_DIR+'river_pred_proba_plot.pdf')
-#
 river_acc_trend_list = []
 river_recall_trend_list = []
 river_recall_uncertainty_list = []
 river_f1_score_list = []
 
-i_date_point = 0
+
+#------------------------------------------------------------------------------#
+# accumulating prediction proba and corresponding target for plot distribution #
+#------------------------------------------------------------------------------#
+predict_set_appending_accumulating = []
+y_test_set_appending_accumulating = []
 
 for i_date in data_loader_for_test.get_distinct_date_set_list():
     #===========================================================================#
@@ -230,15 +237,19 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
 
     print("running river accumulating training with date:{}".format(str(i_date)))
 
-    i_date_point += 1
-
     pred_result, y_test = river_evaluator.predict_proba_true_class_by_date(i_date, do_online_training=True)
 
-    predict_set_appending_accumulating.append(pred_result)
-    y_test_set_appending_accumulating.append(y_test)
+    predict_set_appending_accumulating.extend(pred_result)
+    y_test_set_appending_accumulating.extend(y_test)
+    print(len(predict_set_appending_accumulating))
 
-    if (str(i_date) == '2021-01-15') or (str(i_date) == '2021-01-31'):
-        run_prediction_proba(predict_set_appending_accumulating, y_test_set_appending_accumulating, OUTPUT_DIR + 'river_pred_proba_plot_{}.pdf'.format(str(i_date)))
+    dates_to_draw = [
+        '2021-01-03', '2021-01-06', '2021-01-09', '2021-01-12', '2021-01-15', '2021-01-18', '2021-01-21', '2021-01-24', '2021-01-27', '2021-01-30'
+    ]
+    # if str(i_date) in dates_to_draw:
+    #     run_prediction_proba(predict_set_appending_accumulating, y_test_set_appending_accumulating, OUTPUT_DIR + 'river_pred_proba_plot_{}.pdf'.format(str(i_date)))
+    #     predict_set_appending_accumulating = []
+    #     y_test_set_appending_accumulating = []
 
     acc, recall, recall_uncertainty, f1_s = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.4)
 

@@ -73,7 +73,7 @@ class ModelTrainerReader(abc.ABC):
         pass
 
 
-    def _prepare_data_to_training(self) -> pandas.DataFrame:
+    def _prepare_data_to_training(self):
 
         print("Going to preparing data for training model")
 
@@ -94,17 +94,19 @@ class ModelTrainerReader(abc.ABC):
 
         return X, y
 
+    def _save_model(self):
+
+        with open(self._model_location, 'wb') as f:
+            pickle.dump(self._model, f)
+            print("saving Model : {} successfully".format(self._model_location))
+
     def get_data_loader(self):
         return self._data_loader
 
     def get_model(self):
         return self._model
 
-    def save_model(self):
 
-        with open(self._model_location, 'wb') as f:
-            pickle.dump(self._model, f)
-            print("saving Model : {} successfully".format(self._model_location))
     
     
 class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
@@ -161,6 +163,7 @@ class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
                     del self._model
                     self._create_model()
                     self._train_model()
+                    self._save_model()
 
                 except AttributeError:
                     pass
@@ -171,6 +174,7 @@ class SklearnRandomForestClassifierTrainer(ModelTrainerReader):
             '''
             self._create_model()
             self._train_model()
+            self._save_model()
 
     def _create_model(self):
 
@@ -220,6 +224,7 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
             '''
             self._create_model()
             self._train_model()
+            self._save_model()
 
 
     def _create_model(self):
@@ -228,22 +233,14 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
             n_models=self._n_tree,
             max_depth=self._max_depth,
             split_criterion=self._criterion,
-            grace_period=100
+            grace_period=100,
+            drift_detector=None
         )
 
 
     def _train_model(self):
 
         X, y = self._prepare_data_to_training()
-        for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
-            try:
-                self._model.learn_one(raw, y[index])
-            except:
-                print("error happen: X data :{}".format(str(raw)))
-
-
-    def training_mode_continuously(self, X, y):
-
         for index, raw in tqdm(X.iterrows(), total=X.shape[0]):
             try:
                 self._model.learn_one(raw, y[index])
