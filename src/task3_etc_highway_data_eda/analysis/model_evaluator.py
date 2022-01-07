@@ -6,7 +6,8 @@ from tqdm import tqdm
 
 from tools.model_perform_visualization import PredictionProbabilityDist, TrendPlot
 
-from sklearn.metrics import accuracy_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, recall_score, f1_score, roc_curve, auc, roc_auc_score
+from sklearn.metrics import RocCurveDisplay
 
 class ModelEvaluator(abc.ABC):
 
@@ -83,13 +84,36 @@ class ModelEvaluator(abc.ABC):
                 num_target = y_test.tolist().count(1)
 
             acc = accuracy_score(y_test, pred_proba_casting_binary)
-            recall = recall_score(y_test, pred_proba_casting_binary)
+            recall = recall_score(y_test, pred_proba_casting_binary, zero_division=1)
             recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
-            f1_s = f1_score(y_test, pred_proba_casting_binary)
+            recall_uncertainty = 0
+            f1_s = f1_score(y_test, pred_proba_casting_binary, zero_division=1)
 
-            return acc, recall, recall_uncertainty, f1_s
-        except:
-            breakpoint()
+            # calculating auc
+            auc_score = roc_auc_score(y_test, pred_proba_result, labels=1)
+
+        except ValueError:
+            auc_score = 1
+
+        return acc, recall, recall_uncertainty, f1_s, auc_score
+
+
+
+    @staticmethod
+    def roc_curve_displayer(pred_proba_result, y_test, estimator_name='estimator name'):
+        """
+        providing prediction probability result and y_true to draw roc
+        :param pred_proba_result:
+        :param y_test:
+        :param estimator_name:
+        :return: roc_curve_display
+        """
+        fpr, tpr, threshold = roc_curve(y_test, pred_proba_result, pos_label=1)
+        cut_point_index = np.argmax(tpr - fpr)
+        print("best threshold:{}  tpr:{}  fpr:{}".format(threshold[cut_point_index], tpr[cut_point_index], fpr[cut_point_index]))
+        roc_auc = auc(fpr, tpr)
+        display = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, estimator_name=estimator_name)
+        return display
 
 
 class SklearnModelEvaluator(ModelEvaluator):

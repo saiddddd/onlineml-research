@@ -109,6 +109,14 @@ class TrendPlot:
         plt.grid(axis='y', alpha=.7, linestyle=":")
         plt.tight_layout()
         plt.savefig(save_fig_path)
+
+
+class RocCurve:
+
+    def __init__(self, RocCurveDisplay):
+
+        RocCurveDisplay.plot()
+        plt.show()
         
         
         
