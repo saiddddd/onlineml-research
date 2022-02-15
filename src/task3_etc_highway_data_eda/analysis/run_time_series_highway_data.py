@@ -47,7 +47,7 @@ def prepare_dataloader_for_test(data_path, drop_feature_list: list) -> TimeSerie
 DATA_HOME_PATH = "../../../data/highway_etc_traffic/eda_data/"
 
 # experimental title 
-TRAIN_EXTEND_NAME = 'highway1_neihuw_2016_full_weekdays'
+TRAIN_EXTEND_NAME = '2016_12_first_day_weekdays'
 
 # model direction
 SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
@@ -72,8 +72,8 @@ DATA_YEAR_MONTH_LIST = [
     '2020_07', '2020_08', '2020_09', '2020_10', '2020_11', '2020_12', #18~24
     '2021_01', '2021_02', '2021_03', '2021_04', '2021_05', '2021_06', #24~30
     '2021_07', '2021_08', '2021_09', '2021_10', '2021_11', '2021_12',  #30~36
-    '2016_weekdays', '2017_weekdays', '2018_weekend' #36~39
-    # '2018_weekend', '2020_weekend', '2021_weekend', #39~#42
+    '2016_weekdays', '2017_weekdays', '2018_weekend', #36~39
+    '2020_weekend', '2021_weekend' #39~#41
     # '2021_01_weekdays', '2021_02_weekend', '2021_03_weekend', '2021_04_weekend', '2021_05_weekend', '2021_06_weekend' #42~#48
 ]
 
@@ -97,8 +97,8 @@ feature_to_drop = [
 
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, feature_to_drop)
 
-training_start_date = '2016-01-01'
-training_end_date = '2016-12-31'
+training_start_date = '2016-12-01'
+training_end_date = '2016-12-02'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
@@ -243,6 +243,9 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
     y_test_set_appending_accumulating.extend(y_test)
     print(len(predict_set_appending_accumulating))
 
+    """
+    for check, to be remove
+    """
     dates_to_draw = [
         '2021-01-03', '2021-01-06', '2021-01-09', '2021-01-12', '2021-01-15', '2021-01-18', '2021-01-21', '2021-01-24', '2021-01-27', '2021-01-30'
     ]
@@ -250,6 +253,8 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
         run_prediction_proba(predict_set_appending_accumulating, y_test_set_appending_accumulating, OUTPUT_DIR + 'river_pred_proba_plot_{}.pdf'.format(str(i_date)))
         predict_set_appending_accumulating = []
         y_test_set_appending_accumulating = []
+
+
 
     acc, recall, recall_uncertainty, f1_s, auc_score = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.4)
 
@@ -276,4 +281,7 @@ trend_plot_f1_score.plot_trend(x_list, sklearn_f1_score_list, label="sklearn f1 
 trend_plot_f1_score.plot_trend(x_list, river_f1_score_list, label="river f1 score")
 trend_plot_f1_score.save_fig(title="F1 score trend plot", x_label='date', y_label='f1 score', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_f1_score.pdf')
 
-
+trend_plot_recall = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+trend_plot_recall.plot_trend(x_list, sklearn_recall_trend_list, label="sklearn recall")
+trend_plot_recall.plot_trend(x_list, river_recall_trend_list, label="river recall")
+trend_plot_recall.save_fig(title="recall rate trend plot", x_label='date', y_label='recall', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_recall.pdf')

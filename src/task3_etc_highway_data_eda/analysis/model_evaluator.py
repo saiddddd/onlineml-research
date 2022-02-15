@@ -63,6 +63,10 @@ class ModelEvaluator(abc.ABC):
 
         return X_test, y_test
 
+
+    def get_model(self):
+        return self._model
+
     @staticmethod
     def get_model_score_by_daily_subset(pred_proba_result, y_test, proba_cut=0.5):
         """
@@ -85,7 +89,7 @@ class ModelEvaluator(abc.ABC):
 
             acc = accuracy_score(y_test, pred_proba_casting_binary)
             recall = recall_score(y_test, pred_proba_casting_binary, zero_division=1)
-            recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
+            # recall_uncertainty = math.sqrt(recall * (1 - recall) / num_target)
             recall_uncertainty = 0
             f1_s = f1_score(y_test, pred_proba_casting_binary, zero_division=1)
 

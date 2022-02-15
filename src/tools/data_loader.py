@@ -94,6 +94,10 @@ class TimeSeriesDataLoader(DataLoader):
         self._distinct_date_set = sorted(self._op_df[self._time_series_column_name].dt.date.unique())
         self._distinct_date_set_iterator = iter(list(self._distinct_date_set))
 
+        # extract distinct year/month set
+        self._distinct_month_year_set = sorted(self._op_df[self._time_series_column_name].dt.strftime("%y-%m").unique())
+        self._distinct_month_year_set_iterator = iter(list(self._distinct_month_year_set))
+
     def sort_by_time(self, ascending_order=True):
         """
         sorting by time
@@ -171,7 +175,7 @@ class TimeSeriesDataLoader(DataLoader):
         """
         get the sorted list of all distinct date set from operation dataframe (self._op_df)
         :return: list of distinct date set
-        :rtype: next date
+        :rtype: list
         """
         return self._distinct_date_set
     
@@ -182,7 +186,25 @@ class TimeSeriesDataLoader(DataLoader):
         """
         next_date = next(self._distinct_date_set_iterator)
         return next_date
-        
+
+
+    def get_distinct_month_year_set_list(self):
+        """
+        get the sorted list of all distinct month/year set from operation dataframe (self._op_df)
+        :return: list of distinct month/year set
+        :rtype: list
+        """
+        return self._distinct_month_year_set
+
+    def get_next_month_year_from_iteration(self):
+        """
+        get next month/year iteration.
+        :return: next month/year
+        :rtype: next month year
+        """
+        next_month_year = next(self._distinct_month_year_set_iterator)
+        return next_month_year
+
     
     def get_full_df(self) -> pd.DataFrame:
         """
@@ -203,6 +225,18 @@ class TimeSeriesDataLoader(DataLoader):
         """
         df = self._op_df[self._op_df[self._time_series_column_name].dt.date == selected_date]
         return df
+
+    def get_sub_df_by_month_year(self, selected_month_year) -> pd.DataFrame:
+        """
+        To get sub dataframe by filtering with month/year.
+        >> e.g. get_sub_df_by_month_year("2021-01"),
+        >> return df["DateTime"] == 2021-01
+        :param selected_month_year:
+        :return: pd.DataFrame
+        """
+        sub_df = self._op_df[self._op_df[self._time_series_column_name].dt.strftime('%y-%m') == selected_month_year]
+        return sub_df
+
 
     def get_sub_df_by_time_interval(self, start_time, end_time=None) -> pd.DataFrame:
         """
@@ -243,6 +277,9 @@ class TimeSeriesDataLoader(DataLoader):
     def get_latest_data_time(self) -> time:
         last_row = self.get_latest_data()
         return last_row[self._time_series_column_name]
+
+    def get_time_series_column_name(self) -> str:
+        return self._time_series_column_name
 
     def parse_time(self):
         raise NotImplementedError
