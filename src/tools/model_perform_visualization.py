@@ -60,7 +60,7 @@ class TrendPlot:
         self.fig.set_figwidth(14)
         
         if is_time_series:
-            dtFmt = mdates.DateFormatter('%b-%d %y')
+            dtFmt = mdates.DateFormatter('%b %y')
             plt.gca().xaxis.set_major_formatter(dtFmt)
             plt.xticks(rotation=45)
 

@@ -18,7 +18,7 @@ import pandas as pd
 def prepare_dataloader_for_test(data_path, drop_feature_list=None) -> TimeSeriesDataLoader:
     data_loader = TimeSeriesDataLoader(
         data_path,
-        time_series_column_name="Date", time_format="%yyyy/%mm/%dd"
+        time_series_column_name="Date", time_format="%yyyy-%mm-%dd"
     )
 
     if drop_feature_list is not None:
@@ -42,48 +42,50 @@ def prepare_dataloader_for_test(data_path, drop_feature_list=None) -> TimeSeries
 #----------------------------#
 
 # experimental title 
-TRAIN_EXTEND_NAME = 'DOW_30_Training'
+TRAIN_EXTEND_NAME = 'TWII_Training'
 
 # model direction
-SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
+SKLEARN_MODEL_SAVE_DIR = '../../model_store/sklearn/rfc/'
 SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_'+TRAIN_EXTEND_NAME+'.pickle'
 
-RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
+RIVER_MODEL_SAVE_DIR = '../../model_store/river/adarf/'
 RIVER_MODEL_SAVE_NAME = 'river_adarf_'+TRAIN_EXTEND_NAME+'.pickle'
 
 LABEL = "LABEL"
 
 # output plot direction
-OUTPUT_DIR = '../../../output_plot/'
+OUTPUT_DIR = '../../output_plot/'
 
 #----------------------------------------------------------#
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
-datapaths_training = "../../data/stock_index_predict/DOW30.csv"
+datapaths_training = "../../data/stock_index_predict/eda_TWII.csv"
 
-data_loader_for_training = prepare_dataloader_for_test(datapaths_training)
+drop_feature_list = ['DailyReturn']
 
-training_start_date = '2010-01-01'
-training_end_date = '2010-12-31'
+data_loader_for_training = prepare_dataloader_for_test(datapaths_training, drop_feature_list)
+
+training_start_date = '2003-01-01'
+training_end_date = '2016-12-31'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=20, criterion='gini',
+    n_tree=300, max_depth=5, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
-    time_series_col_name='Date', time_format="%yyyy/%mm/%dd"
+    time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
 )
 
 model_master_river = RiverAdaRandomForestClassifier(
     data_loader=data_loader_for_training,
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=20, criterion='gini',
+    n_tree=300, max_depth=5, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
-    time_series_col_name='Date', time_format="%yyyy/%mm/%dd"
+    time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
 )
 
 
@@ -104,8 +106,8 @@ model_river = model_master_river.get_model()
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = "../../data/stock_index_predict/DOW30.csv"
-data_loader_for_test = prepare_dataloader_for_test(datapaths_testing)
+datapaths_testing = "../../data/stock_index_predict/eda_TWII_test.csv"
+data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, drop_feature_list)
 
 
 #===============================================================#
@@ -158,7 +160,7 @@ for i_month_year in data_loader_for_test.get_distinct_month_year_set_list():
     # Running prediction probability by date and return daily acc, recall, etc. #
     #===========================================================================#
     pred_result, y_test = sklearn_evaluator.predict_proba_true_class_by_month_year(i_month_year)
-    acc, recall, recall_uncertainty, f1_s, auc_score = sklearn_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.4)
+    acc, recall, recall_uncertainty, f1_s, auc_score = sklearn_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.5)
 
     sklearn_acc_trend_list.append(acc * 100)
     sklearn_recall_trend_list.append(recall * 100)
@@ -181,7 +183,7 @@ river_evaluator = RiverModelEvaluator(
 #-----------------------------------------------#
 # check out prediction probability distribution #
 #-----------------------------------------------#
-# predict_full_set, y_test_full_set = river_evaluator.predict_proba_true_class_full_set()
+predict_full_set, y_test_full_set = river_evaluator.predict_proba_true_class_full_set()
 
 roc_curve_display = river_evaluator.roc_curve_displayer(predict_full_set, y_test_full_set, estimator_name="river ml")
 RocCurve(roc_curve_display)
@@ -226,7 +228,7 @@ for i_month_year in data_loader_for_test.get_distinct_month_year_set_list():
 
 
 
-    acc, recall, recall_uncertainty, f1_s, auc_score = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.4)
+    acc, recall, recall_uncertainty, f1_s, auc_score = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.5)
 
     # roc_curve_display = river_evaluator.roc_curve_displayer(pred_result, y_test, estimator_name="river ml")
     # RocCurve(roc_curve_display)

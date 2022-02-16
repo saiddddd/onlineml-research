@@ -1,7 +1,7 @@
 from tools.data_loader import TimeSeriesDataLoader
 
-from model_trainer_reader import SklearnRandomForestClassifierTrainer, RiverAdaRandomForestClassifier
-from model_evaluator import SklearnModelEvaluator, RiverModelEvaluator
+from tools.model_trainer_reader import SklearnRandomForestClassifierTrainer, RiverAdaRandomForestClassifier
+from tools.model_evaluator import SklearnModelEvaluator, RiverModelEvaluator
 
 from tools.model_perform_visualization import TrendPlot, PredictionProbabilityDist, RocCurve
 
