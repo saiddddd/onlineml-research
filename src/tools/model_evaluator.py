@@ -223,7 +223,7 @@ class RiverModelEvaluator(ModelEvaluator):
             raise RuntimeError
 
 
-    def predict_proba_true_class_full_set(self, i_date=None):
+    def predict_proba_true_class_full_set(self, i_date=None, do_online_training=True):
         X_test, y_test = self.get_testing_x_y_full_set()
         pred_proba_result_list = []
         for index, raw in tqdm(X_test.iterrows(), total=X_test.shape[0]):
@@ -234,6 +234,18 @@ class RiverModelEvaluator(ModelEvaluator):
                 
             except:
                 print("error happen")
+
+            if do_online_training:
+                '''
+                if do online training option is on, go to do it, or skip this part
+                '''
+                try:
+                    # -------------------------------------------------#
+                    # if prediction is fine, go learn one observation #
+                    # -------------------------------------------------#
+                    self._model.learn_one(raw, y_test[index])
+                except:
+                    print("error happen while learning")
         
         return np.array(pred_proba_result_list), y_test
             

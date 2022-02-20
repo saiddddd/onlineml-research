@@ -5,6 +5,8 @@ from tools.model_evaluator import SklearnModelEvaluator, RiverModelEvaluator
 
 from tools.model_perform_visualization import TrendPlot, PredictionProbabilityDist, RocCurve
 
+from sklearn.metrics import accuracy_score, recall_score, f1_score, roc_curve, auc, roc_auc_score
+
 import datetime
 
 import json
@@ -59,20 +61,20 @@ OUTPUT_DIR = '../../output_plot/'
 #----------------------------------------------------------#
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
-datapaths_training = "../../data/stock_index_predict/eda_TWII.csv"
+datapaths_training = "../../data/stock_index_predict/eda_TW50_top10_append.csv"
 
-drop_feature_list = ['DailyReturn']
+drop_feature_list = ['DailyReturn', 'Adj Close']
 
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, drop_feature_list)
 
 training_start_date = '2003-01-01'
-training_end_date = '2016-12-31'
+training_end_date = '2003-12-31'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
-    n_tree=300, max_depth=5, criterion='gini',
+    n_tree=100, max_depth=5, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -82,7 +84,7 @@ model_master_river = RiverAdaRandomForestClassifier(
     data_loader=data_loader_for_training,
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
-    n_tree=300, max_depth=5, criterion='gini',
+    n_tree=100, max_depth=5, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -94,19 +96,16 @@ model_river = model_master_river.get_model()
 
 # print("Tree basic structure measurements")
 # trees = model_river.models
-#
-# print(json.dumps(trees[0].model.model_measurements, indent=2, default=str))
-# print("Tree structure details inspection")
-# print(json.dumps(trees[0].model.model_description(), default=str))
-# g = trees[0].model.draw()
-# g.render(OUTPUT_DIR + "AdaRF_tree1_Structure_do_parallel", format='png')
+# for i in range(len(trees)):
+#     g = trees[i].model.draw()
+#     g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_training".format(i), format='png')
     
 #====================================#
 # End of Model Training/Preparation, #
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = "../../data/stock_index_predict/eda_TWII_test.csv"
+datapaths_testing = "../../data/stock_index_predict/eda_TW50_top10_append_test.csv"
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, drop_feature_list)
 
 
@@ -155,11 +154,11 @@ sklearn_recall_trend_list = []
 sklearn_recall_uncertainty_list = []
 sklearn_f1_score_list = []
 sklearn_auc_score_list = []
-for i_month_year in data_loader_for_test.get_distinct_month_year_set_list():
+for i_date in data_loader_for_test.get_distinct_date_set_list():
     #===========================================================================#
     # Running prediction probability by date and return daily acc, recall, etc. #
     #===========================================================================#
-    pred_result, y_test = sklearn_evaluator.predict_proba_true_class_by_month_year(i_month_year)
+    pred_result, y_test = sklearn_evaluator.predict_proba_true_class_by_date(i_date)
     acc, recall, recall_uncertainty, f1_s, auc_score = sklearn_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.5)
 
     sklearn_acc_trend_list.append(acc * 100)
@@ -183,12 +182,12 @@ river_evaluator = RiverModelEvaluator(
 #-----------------------------------------------#
 # check out prediction probability distribution #
 #-----------------------------------------------#
-predict_full_set, y_test_full_set = river_evaluator.predict_proba_true_class_full_set()
-
-roc_curve_display = river_evaluator.roc_curve_displayer(predict_full_set, y_test_full_set, estimator_name="river ml")
-RocCurve(roc_curve_display)
-
-run_prediction_proba(predict_full_set, y_test_full_set, OUTPUT_DIR + 'river_pred_proba_plot.pdf')
+# predict_full_set, y_test_full_set = river_evaluator.predict_proba_true_class_full_set()
+#
+# roc_curve_display = river_evaluator.roc_curve_displayer(predict_full_set, y_test_full_set, estimator_name="river ml")
+# RocCurve(roc_curve_display)
+#
+# run_prediction_proba(predict_full_set, y_test_full_set, OUTPUT_DIR + 'river_pred_proba_plot.pdf')
 
 river_acc_trend_list = []
 river_recall_trend_list = []
@@ -202,31 +201,18 @@ river_auc_score_list = []
 predict_set_appending_accumulating = []
 y_test_set_appending_accumulating = []
 
-for i_month_year in data_loader_for_test.get_distinct_month_year_set_list():
+for i_date in data_loader_for_test.get_distinct_date_set_list():
     #===========================================================================#
     # Running prediction probability by date and return daily acc, recall, etc. #
     #===========================================================================#
 
-    print("running river accumulating training with date:{}".format(str(i_month_year)))
+    print("running river accumulating training with date:{}".format(str(i_date)))
 
-    pred_result, y_test = river_evaluator.predict_proba_true_class_by_month_year(i_month_year, do_online_training=True)
+    pred_result, y_test = river_evaluator.predict_proba_true_class_by_date(i_date, do_online_training=True)
 
     predict_set_appending_accumulating.extend(pred_result)
     y_test_set_appending_accumulating.extend(y_test)
     print(len(predict_set_appending_accumulating))
-
-    """
-    for check, to be remove
-    """
-    # dates_to_draw = [
-    #     '2021-01-03', '2021-01-06', '2021-01-09', '2021-01-12', '2021-01-15', '2021-01-18', '2021-01-21', '2021-01-24', '2021-01-27', '2021-01-30'
-    # ]
-    # if str(i_date) in dates_to_draw:
-    #     run_prediction_proba(predict_set_appending_accumulating, y_test_set_appending_accumulating, OUTPUT_DIR + 'river_pred_proba_plot_{}.pdf'.format(str(i_date)))
-    #     predict_set_appending_accumulating = []
-    #     y_test_set_appending_accumulating = []
-
-
 
     acc, recall, recall_uncertainty, f1_s, auc_score = river_evaluator.get_model_score_by_daily_subset(pred_result, y_test, proba_cut=0.5)
 
@@ -239,21 +225,44 @@ for i_month_year in data_loader_for_test.get_distinct_month_year_set_list():
     river_f1_score_list.append(f1_s * 100)
     river_auc_score_list.append(auc_score)
 
+# print("Tree basic structure measurements")
+# trees = model_river.models
+# for i in range(len(trees)):
+#     g = trees[i].model.draw()
+#     g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_online_learning".format(i), format='png')
 
-x_list = data_loader_for_test.get_distinct_month_year_set_list()
+import statistics
+sklearn_auc_score_list_smooth = [statistics.mean(sklearn_auc_score_list[i:i+30]) for i in range(len(sklearn_auc_score_list)-30)]
+river_auc_score_list_smooth = [statistics.mean(river_auc_score_list[i:i+30]) for i in range(len(river_auc_score_list)-30)]
 
+sklearn_acc_trend_list_smooth = [statistics.mean(sklearn_acc_trend_list[i:i+30]) for i in range(len(sklearn_acc_trend_list)-30)]
+river_acc_trend_list_smooth = [statistics.mean(river_acc_trend_list[i:i+30]) for i in range(len(river_acc_trend_list)-30)]
+
+sklearn_f1_score_list_smooth = [statistics.mean(sklearn_f1_score_list[i:i+30]) for i in range(len(sklearn_f1_score_list)-30)]
+river_f1_score_list_smooth = [statistics.mean(river_f1_score_list[i:i+30]) for i in range(len(river_f1_score_list)-30)]
+
+sklearn_recall_trend_list_smooth = [statistics.mean(sklearn_recall_trend_list[i:i+30]) for i in range(len(sklearn_recall_trend_list)-30)]
+river_recall_trend_list_smooth = [statistics.mean(river_recall_trend_list[i:i+30]) for i in range(len(river_recall_trend_list)-30)]
+
+x_list = data_loader_for_test.get_distinct_date_set_list()
 
 trend_plot_auc = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot_auc.plot_trend(x_list, sklearn_auc_score_list, label="sklearn AUC")
-trend_plot_auc.plot_trend(x_list, river_auc_score_list, label="river AUC")
+trend_plot_auc.plot_trend(x_list[30:], sklearn_auc_score_list_smooth, label="sklearn AUC")
+trend_plot_auc.plot_trend(x_list[30:], river_auc_score_list_smooth, label="river AUC")
 trend_plot_auc.save_fig(title="AUC Trend Plot", x_label='date', y_label='AUC', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_auc.pdf')
 
+trend_plot_acc = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
+trend_plot_acc.plot_trend(x_list[30:], sklearn_acc_trend_list_smooth, label="sklearn Accuracy")
+trend_plot_acc.plot_trend(x_list[30:], river_acc_trend_list_smooth, label="river Accuracy")
+trend_plot_acc.save_fig(title="Accuracy", x_label='date', y_label='Accuracy', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_acc.pdf')
+
+
 trend_plot_f1_score = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot_f1_score.plot_trend(x_list, sklearn_f1_score_list, label="sklearn f1 score")
-trend_plot_f1_score.plot_trend(x_list, river_f1_score_list, label="river f1 score")
+trend_plot_f1_score.plot_trend(x_list[30:], sklearn_f1_score_list_smooth, label="sklearn f1 score")
+trend_plot_f1_score.plot_trend(x_list[30:], river_f1_score_list_smooth, label="river f1 score")
 trend_plot_f1_score.save_fig(title="F1 score trend plot", x_label='date', y_label='f1 score', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_f1_score.pdf')
 
 trend_plot_recall = TrendPlot(figsize_x=14, figsize_y=4, is_time_series=True)
-trend_plot_recall.plot_trend(x_list, sklearn_recall_trend_list, label="sklearn recall")
-trend_plot_recall.plot_trend(x_list, river_recall_trend_list, label="river recall")
+trend_plot_recall.plot_trend(x_list[30:], sklearn_recall_trend_list_smooth, label="sklearn recall")
+trend_plot_recall.plot_trend(x_list[30:], river_recall_trend_list_smooth, label="river recall")
 trend_plot_recall.save_fig(title="recall rate trend plot", x_label='date', y_label='recall', save_fig_path=OUTPUT_DIR+'model_evaluation_trend_plot_recall.pdf')

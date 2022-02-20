@@ -4,6 +4,8 @@ import pickle
 
 import pandas
 from sklearn.ensemble import RandomForestClassifier
+from river import ensemble
+from river import tree
 from river.ensemble import AdaptiveRandomForestClassifier
 
 from tools.data_loader import TimeSeriesDataLoader
@@ -232,12 +234,30 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
 
     def _create_model(self):
 
-        self._model = AdaptiveRandomForestClassifier(
+        # self._model = AdaptiveRandomForestClassifier(
+        #     n_models=self._n_tree,
+        #     max_depth=self._max_depth,
+        #     split_criterion=self._criterion,
+        #     grace_period=10,
+        #     remove_poor_attrs=True,
+        #     memory_estimate_period=100,
+        #     max_size=0.1
+        #
+        #     # tie_threshold=0.002
+        #     # drift_detector=None
+        # )
+
+        self._model = ensemble.AdaBoostClassifier(
+            model=(
+                tree.HoeffdingTreeClassifier(
+                    max_depth=self._max_depth,
+                    split_criterion=self._criterion,
+                    split_confidence=1e-5,
+                    grace_period=10
+                )
+            ),
             n_models=self._n_tree,
-            max_depth=self._max_depth,
-            split_criterion=self._criterion,
-            grace_period=100,
-            drift_detector=None
+            seed=42
         )
 
 

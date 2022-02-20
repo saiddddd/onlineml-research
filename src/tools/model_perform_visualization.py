@@ -12,12 +12,14 @@ class PredictionProbabilityDist:
         self._target_list = target_list
         
     def draw_proba_dist_by_true_false_class_seperated(self):
+
+        topic_str=''
         
         pred_proba_result_true_class = self._pred_proba_result_list[self._target_list == 1]
         pred_proba_result_false_class = self._pred_proba_result_list[self._target_list == 0]
         
         plt.figure(figsize=(14, 4))
-        plt.suptitle('highway_traffic_pred_proba_distribution')
+        plt.suptitle('{}pred_proba_distribution'.format(topic_str))
         plt.subplot(131)
         plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
         plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
