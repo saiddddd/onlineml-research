@@ -249,16 +249,30 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
 
         self._model = ensemble.AdaBoostClassifier(
             model=(
-                tree.HoeffdingTreeClassifier(
+                tree.HoeffdingAdaptiveTreeClassifier(
                     max_depth=self._max_depth,
                     split_criterion=self._criterion,
-                    split_confidence=1e-5,
+                    split_confidence=1e-2,
                     grace_period=10
                 )
             ),
             n_models=self._n_tree,
             seed=42
         )
+
+        # self._model = tree.HoeffdingTreeClassifier(
+        #             max_depth=self._max_depth,
+        #             split_criterion=self._criterion,
+        #             split_confidence=1e-2,
+        #             grace_period=10
+        #         )
+
+        # self._model = tree.HoeffdingAdaptiveTreeClassifier(
+        #     max_depth=self._max_depth,
+        #     split_criterion=self._criterion,
+        #     split_confidence=1e-2,
+        #     grace_period=10
+        # )
 
 
     def _train_model(self):

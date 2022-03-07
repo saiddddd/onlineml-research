@@ -68,13 +68,13 @@ drop_feature_list = ['DailyReturn', 'Adj Close']
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, drop_feature_list)
 
 training_start_date = '2003-01-01'
-training_end_date = '2003-12-31'
+training_end_date = '2003-01-10'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=5, criterion='gini',
+    n_tree=10, max_depth=5, criterion='entropy',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -84,7 +84,7 @@ model_master_river = RiverAdaRandomForestClassifier(
     data_loader=data_loader_for_training,
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=5, criterion='gini',
+    n_tree=10, max_depth=5, criterion='info_gain',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -97,15 +97,18 @@ model_river = model_master_river.get_model()
 # print("Tree basic structure measurements")
 # trees = model_river.models
 # for i in range(len(trees)):
-#     g = trees[i].model.draw()
+#     g = trees[i].draw()
 #     g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_training".format(i), format='png')
-    
+
+# g = model_river.draw()
+# g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_training".format(0), format='png')
+
 #====================================#
 # End of Model Training/Preparation, #
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = "../../data/stock_index_predict/eda_TW50_top10_append_test.csv"
+datapaths_testing = "../../data/stock_index_predict/eda_TW50_top10_append_test_start_from_2006_to_2010.csv"
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, drop_feature_list)
 
 
@@ -228,8 +231,12 @@ for i_date in data_loader_for_test.get_distinct_date_set_list():
 # print("Tree basic structure measurements")
 # trees = model_river.models
 # for i in range(len(trees)):
-#     g = trees[i].model.draw()
+#     g = trees[i].draw()
 #     g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_online_learning".format(i), format='png')
+
+# g = model_river.draw()
+# g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_online_learning".format(0), format='png')
+
 
 import statistics
 sklearn_auc_score_list_smooth = [statistics.mean(sklearn_auc_score_list[i:i+30]) for i in range(len(sklearn_auc_score_list)-30)]
