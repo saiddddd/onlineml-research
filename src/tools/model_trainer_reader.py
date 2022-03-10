@@ -252,8 +252,11 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
                 tree.HoeffdingAdaptiveTreeClassifier(
                     max_depth=self._max_depth,
                     split_criterion=self._criterion,
-                    split_confidence=1e-2,
-                    grace_period=10
+                    grace_period=100,
+                    split_confidence=1e-3,
+                    remove_poor_attrs=True,
+                    drift_window_threshold=100,
+                    adwin_confidence=0.001
                 )
             ),
             n_models=self._n_tree,
@@ -272,6 +275,8 @@ class RiverAdaRandomForestClassifier(ModelTrainerReader):
         #     split_criterion=self._criterion,
         #     split_confidence=1e-2,
         #     grace_period=10
+        #     # drift_window_threshold=300,
+        #     # adwin_confidence=0.002
         # )
 
 

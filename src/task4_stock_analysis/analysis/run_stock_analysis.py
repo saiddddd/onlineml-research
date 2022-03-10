@@ -61,20 +61,20 @@ OUTPUT_DIR = '../../output_plot/'
 #----------------------------------------------------------#
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
-datapaths_training = "../../data/stock_index_predict/eda_TW50_top10_append.csv"
+datapaths_training = "../../data/stock_index_predict/eda_TW50_top30_append.csv"
 
 drop_feature_list = ['DailyReturn', 'Adj Close']
 
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, drop_feature_list)
 
-training_start_date = '2003-01-01'
-training_end_date = '2003-01-10'
+training_start_date = '2015-01-01'
+training_end_date = '2017-12-31'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
-    n_tree=10, max_depth=5, criterion='entropy',
+    n_tree=100, max_depth=10, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -84,7 +84,7 @@ model_master_river = RiverAdaRandomForestClassifier(
     data_loader=data_loader_for_training,
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
-    n_tree=10, max_depth=5, criterion='info_gain',
+    n_tree=100, max_depth=10, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -94,21 +94,41 @@ model_master_river = RiverAdaRandomForestClassifier(
 model_sklearn = model_master_sklearn.get_model()
 model_river = model_master_river.get_model()
 
-# print("Tree basic structure measurements")
+
+# # draw sklearn features importance
+# feature_names = [f"{i}" for i in data_loader_for_training.get_full_df().head(1)]
+# feature_names.remove("Date")
+# feature_names.remove("LABEL")
+#
+#
+# importances = model_sklearn.feature_importances_
+# # std = np.std([tree.feature_importances_ for tree in model_sklearn.estimators_], axis=0)
+# # breakpoint()
+# forest_importances = pd.Series(importances, index=feature_names)
+# forest_importances.sort_values(ascending=False, inplace=True)
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# forest_importances.plot.bar()
+# ax.set_title("Feature importances by sklearn RF model (TW stock index)")
+# ax.set_ylabel("score")
+# fig.tight_layout()
+# plt.show()
+# breakpoint()
+
+
+print("Tree basic structure measurements")
 # trees = model_river.models
 # for i in range(len(trees)):
 #     g = trees[i].draw()
 #     g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_training".format(i), format='png')
 
-# g = model_river.draw()
-# g.render(OUTPUT_DIR + "tree_inspect/AdaRF_tree{}_Structure_after_training".format(0), format='png')
 
 #====================================#
 # End of Model Training/Preparation, #
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = "../../data/stock_index_predict/eda_TW50_top10_append_test_start_from_2006_to_2010.csv"
+datapaths_testing = "../../data/stock_index_predict/eda_TW50_top30_append_test_start_from_2018.csv"
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, drop_feature_list)
 
 
@@ -203,6 +223,8 @@ river_auc_score_list = []
 #------------------------------------------------------------------------------#
 predict_set_appending_accumulating = []
 y_test_set_appending_accumulating = []
+
+i_count = 0
 
 for i_date in data_loader_for_test.get_distinct_date_set_list():
     #===========================================================================#
