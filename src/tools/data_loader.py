@@ -23,6 +23,7 @@ class DataLoader(ABC):
         :param file_path: input data file path. Generally csv files.
         """
         self._raw_df = None
+        self._op_df = self.get_raw_df()
 
         if isinstance(file_path, str):
             self._raw_df = self._read_data_from_single_file(file_path)
@@ -54,11 +55,78 @@ class DataLoader(ABC):
         concat_dataframe = pd.concat(map(pd.read_csv, file_path_list))
         return concat_dataframe
 
+    def fill_na_with_zero(self):
+        """
+        data preprocessing step, filling na value with 0
+        :return:
+        """
+        self._op_df.fillna(0, inplace=True)
+
+    def label_encoding(self):
+        """
+        data preprocessing step, string encoding to int
+        :return:
+        """
+        for col in self._op_df:
+            if self._op_df[col].dtype == 'object':
+                self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
+
+    def do_one_hot_encoding_by_col(self, col_name: str):
+        """
+        To do one-hot encoding on specific column, inplace operation
+        :param col_name: the column which is going to do one hot encoding
+        :return:
+        """
+        one_hot_encode_df = pd.get_dummies(self._op_df[col_name], prefix=col_name)
+        self._op_df = self._op_df.join(one_hot_encode_df)
+        self._op_df.drop(columns=[col_name], axis=1, inplace=True)
+
+    def drop_feature(self, feature_to_drop):
+        """
+        using cases specified function, to drop unwanted feature column(s), inplace operation is True
+        :param feature_to_drop:
+        :return:
+        """
+        try:
+            self._op_df.drop([feature_to_drop], axis=1, inplace=True)
+        except KeyError:
+            print("{} is not found in dataframe".format(feature_to_drop))
+
+        check_column = self._op_df.columns
+        for i in check_column:
+            if i == feature_to_drop:
+                print(i)
+                print(feature_to_drop)
+                print(check_column)
+                raise RuntimeError
+
+    def get_full_df(self) -> pd.DataFrame:
+        """
+        To get full set of dateframe (self._op_df without time selection)
+        :return: self._op_df
+        :rtype: pd.Dataframe
+        """
+        full_set_df = self._op_df
+        return full_set_df
+
     def get_raw_df(self):
         return self._raw_df
 
     def get_raw_data_tot_num(self):
         return len(self._raw_df.index)
+
+
+class GeneralDataLoader(DataLoader):
+
+    def __init__(self, file_path):
+        super().__init__(file_path)
+        self._op_df = self.get_raw_df()
+
+        # encoding data if it is not int
+        self.label_encoding()
+        # fill na with 0
+        self.fill_na_with_zero()
+
 
 
 class TimeSeriesDataLoader(DataLoader):
@@ -107,53 +175,53 @@ class TimeSeriesDataLoader(DataLoader):
         self._op_df.reset_index(inplace=True, drop=True)
         print("sorting by time in ascending order:{}, successfully".format(ascending_order))
     
-    def fill_na_with_zero(self):
-        """
-        data preprocessing step, filling na value with 0
-        :return:
-        """
-        self._op_df.fillna(0, inplace=True)
-    
-    def label_encoding(self):
-        """
-        data preprocessing step, string encoding to int
-        :return:
-        """
-        for col in self._op_df:
-            if self._op_df[col].dtype == 'object':
-                self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
+    # def fill_na_with_zero(self):
+    #     """
+    #     data preprocessing step, filling na value with 0
+    #     :return:
+    #     """
+    #     self._op_df.fillna(0, inplace=True)
+    #
+    # def label_encoding(self):
+    #     """
+    #     data preprocessing step, string encoding to int
+    #     :return:
+    #     """
+    #     for col in self._op_df:
+    #         if self._op_df[col].dtype == 'object':
+    #             self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
 
 
-    def do_one_hot_encoding_by_col(self, col_name: str):
-        """
-        To do one-hot encoding on specific column, inplace operation
-        :param col_name: the column which is going to do one hot encoding
-        :return:
-        """
-        one_hot_encode_df = pd.get_dummies(self._op_df[col_name], prefix=col_name)
-        self._op_df = self._op_df.join(one_hot_encode_df)
-        self._op_df.drop(columns=[col_name], axis=1, inplace=True)
-
-        
-    def drop_feature(self, feature_to_drop):
-        """
-        using cases specified function, to drop unwanted feature column(s), inplace operation is True
-        :param feature_to_drop:
-        :return:
-        """
-        try:
-            self._op_df.drop([feature_to_drop], axis=1, inplace=True)
-        except KeyError:
-            print("{} is not found in dataframe".format(feature_to_drop))
-            
-
-        check_column = self._op_df.columns
-        for i in check_column:
-            if i == feature_to_drop:
-                print(i)
-                print(feature_to_drop)
-                print(check_column)
-                raise RuntimeError
+    # def do_one_hot_encoding_by_col(self, col_name: str):
+    #     """
+    #     To do one-hot encoding on specific column, inplace operation
+    #     :param col_name: the column which is going to do one hot encoding
+    #     :return:
+    #     """
+    #     one_hot_encode_df = pd.get_dummies(self._op_df[col_name], prefix=col_name)
+    #     self._op_df = self._op_df.join(one_hot_encode_df)
+    #     self._op_df.drop(columns=[col_name], axis=1, inplace=True)
+    #
+    #
+    # def drop_feature(self, feature_to_drop):
+    #     """
+    #     using cases specified function, to drop unwanted feature column(s), inplace operation is True
+    #     :param feature_to_drop:
+    #     :return:
+    #     """
+    #     try:
+    #         self._op_df.drop([feature_to_drop], axis=1, inplace=True)
+    #     except KeyError:
+    #         print("{} is not found in dataframe".format(feature_to_drop))
+    #
+    #
+    #     check_column = self._op_df.columns
+    #     for i in check_column:
+    #         if i == feature_to_drop:
+    #             print(i)
+    #             print(feature_to_drop)
+    #             print(check_column)
+    #             raise RuntimeError
 
     def get_distinct_time_set_list(self) -> list:
         """
@@ -206,14 +274,14 @@ class TimeSeriesDataLoader(DataLoader):
         return next_month_year
 
     
-    def get_full_df(self) -> pd.DataFrame:
-        """
-        To get full set of dateframe (self._op_df without time selection)
-        :return: self._op_df
-        :rtype: pd.Dataframe
-        """
-        full_set_df = self._op_df
-        return full_set_df
+    # def get_full_df(self) -> pd.DataFrame:
+    #     """
+    #     To get full set of dateframe (self._op_df without time selection)
+    #     :return: self._op_df
+    #     :rtype: pd.Dataframe
+    #     """
+    #     full_set_df = self._op_df
+    #     return full_set_df
     
     def get_sub_df_by_date(self, selected_date) -> pd.DataFrame:
         """
@@ -288,7 +356,7 @@ class TimeSeriesDataLoader(DataLoader):
 if __name__ == '__main__':
 
     data_loader = TimeSeriesDataLoader(
-        "../../data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2020_12.csv",
+        "../../data/highway_etc_traffic/eda_data/highway_traffic_eda_data_ready_for_ml_2018_weekend.csv",
         time_series_column_name="DateTime", time_format="%yyyy-%mm-%dd %HH:%MM:%SS"
     )
 

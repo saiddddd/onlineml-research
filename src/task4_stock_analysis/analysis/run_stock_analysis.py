@@ -67,7 +67,7 @@ drop_feature_list = ['DailyReturn', 'Adj Close']
 
 data_loader_for_training = prepare_dataloader_for_test(datapaths_training, drop_feature_list)
 
-training_start_date = '2015-01-01'
+training_start_date = '2016-01-01'
 training_end_date = '2017-12-31'
 
 model_master_sklearn = SklearnRandomForestClassifierTrainer(

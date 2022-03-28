@@ -61,4 +61,19 @@ class ExperimentPipeline:
         self._testing_dataloader = self._preparing_time_series_dataloader(testing_data_path, time_series_column_name, time_format, drop_feature_list)
 
 
+    def get_training_dataloader(self):
+        """
+        get training dataloader after data_preparation
+        :return: training_dataloader
+        """
+        return self._training_dataloader
+
+    def get_testing_dataloader(self):
+        """
+        get testing dataloader after data_preparation
+        :return: testing_dataloader
+        """
+        return self._testing_dataloader
+
+
 

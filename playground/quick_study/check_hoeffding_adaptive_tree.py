@@ -1,12 +1,13 @@
 from river import tree
 from river import ensemble
-
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 
 import pandas as pd
 from tqdm import tqdm
 
-from sklearn.metrics import accuracy_score
+import rpyc
+
 
 def calculate_slicing_acc(pred_list, target_list, window_size, step=10):
     accumulating_acc = []
@@ -61,6 +62,8 @@ model_river = ensemble.AdaBoostClassifier(
             n_models=10,
             seed=42
         )
+conn = rpyc.connect('localhost', 12345, config={'allow_public_attrs': True, 'allow_pickle': True})
+bgt = rpyc.BgServingThread(conn)
 
 # input data
 in_df = pd.read_csv("./dummy_toy/dummy_data.csv")
@@ -84,11 +87,13 @@ true_answer = []
 for index, raw in tqdm(in_df.iterrows(), total=10000):
 
     # train model
-    model_river.learn_one(raw, target[index])
+    # model_river.learn_one(raw, target[index])
+    conn.root.model_learning(x=raw, y=target[index])
 
     # prediction by features
-    pred_proba = model_river.predict_proba_one(raw).get(1)
-
+    # pred_proba = model_river.predict_proba_one(raw).get(1)
+    pred_proba = conn.root.predict_proba_one(raw)
+    pred_proba = 0
     if pred_proba is not None:
 
         true_answer.append(target[index])
