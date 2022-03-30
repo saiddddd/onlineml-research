@@ -10,6 +10,47 @@ import msgpack
 
 from tools.data_loader import GeneralDataLoader
 
+
+class DataSourcingKafka:
+
+    def __init__(self):
+
+        self.__kafka_producer = None
+        self._init_kafka_producer()
+
+    def _init_kafka_producer(self, *args):
+
+        #TODO kafka producer configuration should let user setting in the future
+        broker_host_name = 'localhost:9092'
+
+        self.__kafka_producer = KafkaProducer(
+            bootstrap_servers=broker_host_name
+        )
+
+    def send_to_kafka(self, data, target_topic):
+
+        data_to_send = None
+        if isinstance(data, str):
+            print("input data is string")
+            data_to_send = bytes(data, 'utf-8')
+        elif isinstance(data, pd.Series):
+            print("input data is pandas series (row)")
+            data_to_send = bytes(str(data.to_json()), 'utf-8')
+        elif isinstance(data, bytearray):
+            print("input data is byte array")
+            data_to_send = data
+
+        if data_to_send is not None:
+            try:
+                #TODO target topic should be configurable in the future
+                target_topic = 'testTopic'
+                self.__kafka_producer.send(target_topic, data_to_send)
+                self.__kafka_producer.flush()
+
+            except Exception as e:
+                e.with_traceback()
+
+
 class BaseGenerator(abc.ABC):
 
     def __init__(self):
@@ -43,35 +84,33 @@ class LocalDataGenerator(BaseGenerator):
 
         self.__general_data_loader = GeneralDataLoader(local_file_path)
         self.__full_op_df = self.__general_data_loader.get_full_df()
+        self.__data_sourcer_to_kafka = DataSourcingKafka()
+
 
     def get_full_op_df(self):
         return self.__full_op_df
 
 
-    def send_data_into_kafka(self, kafka_broker_location: str, send_topic: str, data):
-
-        producer = KafkaProducer(
-            bootstrap_servers=[kafka_broker_location]
-            # value_serializer=lambda x: json.dumps(x).encode('utf-8')
-            # value_serializer=msgpack.dumps
-        )
-
+    def send_data_into_kafka(self):
 
         #TODO send data to Kafka
-        print(data)
-        producer.send(send_topic, value=data, key='training')
+        for index, row in self.__full_op_df.iterrows():
+            self.__data_sourcer_to_kafka.send_to_kafka(row, 'testTopic')
+            # time.sleep(3)
+            # producer.send(send_topic, value=data, key='training')
 
 
 if __name__ == '__main__':
 
     data_generator = LocalDataGenerator('../../playground/quick_study/dummy_toy/dummy_data.csv')
+    data_generator.send_data_into_kafka()
 
-    df = data_generator.get_full_op_df()
-
-    for index, raw in df.iterrows():
-        print(index, raw)
-        data_encoded = raw.to_json().encode()
-        data_generator.send_data_into_kafka('localhost:9092', 'testTopic', data_encoded)
-        time.sleep(1)
-        breakpoint()
+    # df = data_generator.get_full_op_df()
+    #
+    # for index, raw in df.iterrows():
+    #     print(index, raw)
+    #     data_encoded = raw.to_json().encode()
+    #     data_generator.send_data_into_kafka('localhost:9092', 'testTopic', data_encoded)
+    #     time.sleep(1)
+    #     breakpoint()
 
