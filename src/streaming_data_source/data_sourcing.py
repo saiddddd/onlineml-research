@@ -1,6 +1,7 @@
 import abc
 import time
 import json
+from tqdm import tqdm
 
 import pandas as pd
 
@@ -31,13 +32,13 @@ class DataSourcingKafka:
 
         data_to_send = None
         if isinstance(data, str):
-            print("input data is string")
+            # print("input data is string")
             data_to_send = bytes(data, 'utf-8')
         elif isinstance(data, pd.Series):
-            print("input data is pandas series (row)")
+            # print("input data is pandas series (row)")
             data_to_send = bytes(str(data.to_json()), 'utf-8')
         elif isinstance(data, bytearray):
-            print("input data is byte array")
+            # print("input data is byte array")
             data_to_send = data
 
         if data_to_send is not None:
@@ -94,7 +95,7 @@ class LocalDataGenerator(BaseGenerator):
     def send_data_into_kafka(self):
 
         #TODO send data to Kafka
-        for index, row in self.__full_op_df.iterrows():
+        for index, row in tqdm(self.__full_op_df.iterrows(), total=self.__full_op_df.shape[1]):
             self.__data_sourcer_to_kafka.send_to_kafka(row, 'testTopic')
             # time.sleep(3)
             # producer.send(send_topic, value=data, key='training')

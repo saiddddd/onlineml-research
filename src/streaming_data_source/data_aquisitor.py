@@ -1,3 +1,4 @@
+import sys
 import time
 import json
 from abc import ABC
@@ -6,6 +7,7 @@ from kafka import KafkaConsumer
 
 from river import tree
 from river import ensemble
+
 
 class DataAcquisitor(ABC):
     """
@@ -68,14 +70,20 @@ class KafkaDataAcquisitor(DataAcquisitor):
             # print(data)
             # time.sleep(1)
 
+        trained_event_count = 0
         for msg in self.__kafka_consumer:
 
-            recive_data = msg.value
-            row = pd.read_json(json.dumps(recive_data), typ='series', orient='records')
+            receive_data = msg.value
+            row = pd.read_json(json.dumps(receive_data), typ='series', orient='records')
             y = row.pop('Y')
 
+            start_time = time.time()
             self.__model.learn_one(row, y)
-            print('Model learn one')
+            end_time = time.time()
+
+            trained_event_count += 1
+
+            print('\r#{} Events Trained, learn_one time spend: {} millisecond'.format(trained_event_count, end_time-start_time), end='', flush=True)
 
             if self.acquisitor_status == 'stopped':
                 break
