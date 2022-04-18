@@ -131,12 +131,6 @@ class OnlineMachineLearningServer:
 
             print("pooling message from kafka")
 
-            # while polling result is empty
-            # kafka-python consumer will exit directly
-            # Not check the best way to handling this case
-            # add except handling first
-            # TODO: check best handling
-            # try:
             data_polling_result = self.__kafka_consumer.poll(
                 timeout_ms=1000,
                 max_records=None,
@@ -146,39 +140,6 @@ class OnlineMachineLearningServer:
             for key, value in data_polling_result.items():
                 self.train_model_by_one_polling_batch(value)
 
-            # except Exception as e:
-            #     pass
-
-            # print(data_polling_result)
-
-            # for key, value in data_polling_result.items():
-            #
-            #     self.train_model_by_one_polling_batch(value)
-            #
-            #     # for record in value:
-            #     #
-            #     #     receive_data = record.value
-            #     #
-            #     #     row = pd.read_json(json.dumps(
-            #     #         dict(receive_data),
-            #     #         typ='series',
-            #     #         orient='records'
-            #     #     ))
-            #     #     y = row.pop('Y')
-            #     #
-            #     #     start_time = time.time()
-            #     #     self.__model.learn_one(row, y)
-            #     #     end_time = time.time()
-            #     #
-            #     #     self.__trained_event_counter += 1
-            #     #
-            #     #     print(
-            #     #         '\t #{} Events Trained, learn_one time spend:{} milliseconds'.format(
-            #     #             self.__trained_event_counter, (end_time - start_time) * 1000),
-            #     #         end='',
-            #     #         flush=True
-            #     #     )
-            #
             print("end of this pooling, sleep 1 second")
             time.sleep(1)
 
