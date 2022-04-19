@@ -3,6 +3,7 @@ import time
 import json
 import pickle
 from concurrent import futures
+from datetime import datetime
 
 import pandas as pd
 
@@ -17,6 +18,7 @@ class OnlineMachineLearningServer:
 
     def __init__(self):
         self.__server_status = None
+        self.__model_persisting_process_status = None
         self.__kafka_consumer = None
         self.__model = None
         self.__trained_event_counter = 0
@@ -71,23 +73,23 @@ class OnlineMachineLearningServer:
 
     def _save_model(self, save_file_path='', save_file_name=''):
 
-
         # check file name is exist, if not. provided a unique name for it
         if len(save_file_name) == 0:
             timestamp = time.time()
             save_file_name = 'persist_model_{}.pickle'.format(timestamp)
-
         # check folder exist, if not, stop this function
         if save_file_path[-1] != '/':
             save_file_path += '/'
-        if os.path.isfile(save_file_path):
+        if os.path.isdir(save_file_path):
             model_persist_file = save_file_path+save_file_name
         else:
             raise FileNotFoundError('Can not found Model Persist Folder')
-
         with open(model_persist_file, 'wb') as out_file:
             try:
                 pickle.dump(self.__model, out_file)
+                print("Persist Model successfully at {}".format(
+                    datetime.now().strftime('\r%Y-%m-%d %H:%M:%S')
+                ))
             except Exception as e:
                 e.with_traceback()
                 print("Model Persisting Error, can not save model into file {}. Please check!".format(model_persist_file))
@@ -129,7 +131,7 @@ class OnlineMachineLearningServer:
 
         while self.__server_status == 'running':
 
-            print("pooling message from kafka")
+            # print("pooling message from kafka")
 
             data_polling_result = self.__kafka_consumer.poll(
                 timeout_ms=1000,
@@ -140,8 +142,25 @@ class OnlineMachineLearningServer:
             for key, value in data_polling_result.items():
                 self.train_model_by_one_polling_batch(value)
 
-            print("end of this pooling, sleep 1 second")
+            # print("end of this pooling, sleep 1 second")
             time.sleep(1)
+
+    def run_model_persist(self):
+
+        while self.__server_status == 'running':
+            time.sleep(3)
+            print("Try to save model!")
+
+            if self.__model is not None:
+                try:
+                    self._save_model(
+                        save_file_path='../../model_store',
+                        save_file_name='testing_hoeffding_tree.pickle'
+                    )
+                except FileNotFoundError:
+                    print("Folder to persist model not found QQ! {}".format(os.getcwd()))
+
+            time.sleep(7)
 
 
 class OnlineMachineTrainerRunner:
@@ -159,6 +178,9 @@ class OnlineMachineTrainerRunner:
         print("start online machine learning server")
         self._future = self._pool.submit(self.__server.run)
 
+    def start_persist_model(self):
+        self._future = self._pool.submit(self.__server.run_model_persist)
+
     def stop_online_ml_server(self):
         print("stop online machine learning server")
         self.__server.stop()
@@ -169,5 +191,6 @@ class OnlineMachineTrainerRunner:
 if __name__ == "__main__":
     runner = OnlineMachineTrainerRunner()
     runner.start_online_ml_server()
+    runner.start_persist_model()
     # time.sleep(1000)
     # runner.stop_online_ml_server()
