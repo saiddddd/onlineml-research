@@ -2,6 +2,7 @@ import os
 import time
 import json
 import pickle
+import requests
 from concurrent import futures
 from datetime import datetime
 
@@ -147,8 +148,18 @@ class OnlineMachineLearningServer:
 
     def run_model_persist(self):
 
+        def send_signal_load_model(url=''):
+            url = url
+
+            if len(url) > 1:
+                response = requests.post(
+                    url,
+                    data='{"model_path":"../../model_store/testing_hoeffding_tree.pickle"}',
+                    headers={'content-type': 'application/json'}
+                )
+
         while self.__server_status == 'running':
-            time.sleep(3)
+            time.sleep(10)
             print("Try to save model!")
 
             if self.__model is not None:
@@ -157,6 +168,8 @@ class OnlineMachineLearningServer:
                         save_file_path='../../model_store',
                         save_file_name='testing_hoeffding_tree.pickle'
                     )
+                    time.sleep(3)
+                    send_signal_load_model('http://127.0.0.1:5000/model/')
                 except FileNotFoundError:
                     print("Folder to persist model not found QQ! {}".format(os.getcwd()))
 
