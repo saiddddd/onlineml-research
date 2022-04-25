@@ -39,9 +39,9 @@ class OnlineMachineLearningModelServing:
                 receive_data_payload = request.get_json()
                 df = pd.read_json(receive_data_payload)
 
-                self.inference(df)
+                proba_list, is_target_list = self.inference(df)
 
-                return Response(status=200)
+                return Response(json.dumps(proba_list), status=200, headers={'content-type': 'application/json'})
 
             except Exception as e:
                 e.with_traceback()
@@ -56,12 +56,43 @@ class OnlineMachineLearningModelServing:
         with open(path, 'rb') as f:
             self.__model = pickle.load(f)
 
-    def inference(self, data):
+    def inference(self, data: pd.DataFrame, proba_cut_point=0.5) -> (list, list):
+        """
+        The implementation of hoeffding tree model inference.
+        return two list,\n
+        the first one is the list of prediction probability if this inference is target (float). e.g. 0.35 -> 35% of change is target\n
+        the second one is the list of prediction true/false if this inference is target (int). e.g. 1 -> this is target\n
+        :param data: input data frame
+        :param proba_cut_point: float
+        :return: (prediction_probability in list, prediction_is_target)
+        """
+
+        pred_target_proba = []
+        pred_is_target = []
 
         for index, raw in data.iterrows():
-            # print(raw)
+
             result = self.__model.predict_proba_one(raw)
-            print(result)
+
+            try:
+
+                pred_target_proba.append(result.get(1))
+
+                if proba_cut_point is not None:
+                    if result.get(1) >= proba_cut_point:
+                        pred_is_target.append(1)
+                    else:
+                        pred_is_target.append(0)
+
+            except Exception as e:
+                pred_target_proba.append(None)
+                pred_is_target.append(None)
+                e.with_traceback()
+
+        return pred_target_proba, pred_is_target
+
+
+
 
 
 
