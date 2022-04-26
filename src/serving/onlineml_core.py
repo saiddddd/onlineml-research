@@ -15,6 +15,7 @@ from river import tree
 
 from concurrent import futures
 
+
 class OnlineMachineLearningServer:
 
     def __init__(self):
@@ -40,6 +41,19 @@ class OnlineMachineLearningServer:
         else:
             self.__server_status = 'unknown'
             print("Status {} is not design in the server, set status as unknown".format(status))
+
+
+    @property
+    def model_persisting_process_status(self):
+        return self.__model_persisting_process_status
+
+    @model_persisting_process_status.setter
+    def model_persisting_process_status(self, status):
+        if status == 'flushing' or status == 'idle':
+            self.__model_persisting_process_status = status
+        else:
+            self.__model_persisting_process_status = 'unknown'
+            print("Status {} is not design in the server, set statis as unknown".format(status))
 
     def _init_kafka_consumer(self, connection_try_times=3):
         """
@@ -122,6 +136,9 @@ class OnlineMachineLearningServer:
                 flush=True
             )
 
+        # Model has been updated
+        self.__model_persisting_process_status = 'flushing'
+
     def stop(self):
         self.__server_status = 'stopped'
 
@@ -159,10 +176,10 @@ class OnlineMachineLearningServer:
                 )
 
         while self.__server_status == 'running':
-            time.sleep(10)
-            print("Try to save model!")
 
-            if self.__model is not None:
+            time.sleep(10)
+
+            if self.__model is not None and self.__model_persisting_process_status == 'flushing':
                 try:
                     self._save_model(
                         save_file_path='../../model_store',
@@ -170,10 +187,14 @@ class OnlineMachineLearningServer:
                     )
                     time.sleep(3)
                     send_signal_load_model('http://127.0.0.1:5000/model/')
+                    self.__model_persisting_process_status = 'idle'
                 except FileNotFoundError:
                     print("Folder to persist model not found QQ! {}".format(os.getcwd()))
 
-            time.sleep(7)
+            elif self.__model_persisting_process_status == 'idle':
+                print('Model is not been updated, persist process in idle status')
+                time.sleep(10)
+
 
 
 class OnlineMachineTrainerRunner:
