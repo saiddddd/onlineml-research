@@ -47,21 +47,21 @@ def prepare_dataloader_for_test(data_path, drop_feature_list=None) -> TimeSeries
 TRAIN_EXTEND_NAME = 'TWII_Training'
 
 # model direction
-SKLEARN_MODEL_SAVE_DIR = '../../model_store/sklearn/rfc/'
+SKLEARN_MODEL_SAVE_DIR = '../../../model_store/sklearn/rfc/'
 SKLEARN_MODEL_SAVE_NAME = 'sklearn_rfc_'+TRAIN_EXTEND_NAME+'.pickle'
 
-RIVER_MODEL_SAVE_DIR = '../../model_store/river/adarf/'
+RIVER_MODEL_SAVE_DIR = '../../../model_store/river/adarf/'
 RIVER_MODEL_SAVE_NAME = 'river_adarf_'+TRAIN_EXTEND_NAME+'.pickle'
 
 LABEL = "LABEL"
 
 # output plot direction
-OUTPUT_DIR = '../../output_plot/'
+OUTPUT_DIR = '../../../output_plot/'
 
 #----------------------------------------------------------#
 # Start of Online ML Time Series Training/Testing workflow #
 #----------------------------------------------------------#
-datapaths_training = "../../data/stock_index_predict/eda_TW50_top30_append.csv"
+datapaths_training = "../../../data/stock_index_predict/eda_TW50_top30_append.csv"
 
 drop_feature_list = ['DailyReturn', 'Adj Close']
 
@@ -74,7 +74,7 @@ model_master_sklearn = SklearnRandomForestClassifierTrainer(
     data_loader=data_loader_for_training,
     model_saving_dir=SKLEARN_MODEL_SAVE_DIR,
     model_name=SKLEARN_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=10, criterion='gini',
+    n_tree=50, max_depth=10, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -84,7 +84,7 @@ model_master_river = RiverAdaRandomForestClassifier(
     data_loader=data_loader_for_training,
     model_saving_dir=RIVER_MODEL_SAVE_DIR,
     model_name=RIVER_MODEL_SAVE_NAME,
-    n_tree=100, max_depth=10, criterion='gini',
+    n_tree=50, max_depth=10, criterion='gini',
     training_data_start_time=training_start_date, training_data_end_time=training_end_date,
     label_col=LABEL,
     time_series_col_name='Date', time_format="%yyyy-%mm-%dd"
@@ -128,7 +128,7 @@ print("Tree basic structure measurements")
 # Going to do model validation.      #
 #====================================#
 
-datapaths_testing = "../../data/stock_index_predict/eda_TW50_top30_append_test_start_from_2018.csv"
+datapaths_testing = "../../../data/stock_index_predict/eda_TW50_top30_append_test_start_from_2018.csv"
 data_loader_for_test = prepare_dataloader_for_test(datapaths_testing, drop_feature_list)
 
 

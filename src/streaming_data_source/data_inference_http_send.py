@@ -2,12 +2,12 @@ import pandas as pd
 import requests
 import json
 
-api_url = 'http://127.0.0.1:5000/model/inference/'
+api_url = 'http://127.0.0.1:5000/model/validation/'
 headers = {'content-type': 'application/json'}
 
 df = pd.read_csv('../../playground/quick_study/dummy_toy/dummy_data.csv')
 
-df.pop('Y')
+# df.pop('Y')
 
 df = df.head(50)
 
