@@ -1,4 +1,5 @@
 import os
+import traceback
 import time
 import json
 import pickle
@@ -111,58 +112,113 @@ class OnlineMachineLearningServer:
                 print("Model Persisting Error, can not save model into file {}. Please check!".format(model_persist_file))
 
 
-    def train_model_by_one_polling_batch(self, polling_batch_data):
+    def train_model_by_one_row(self, receive_data: pd.Series, label_name: str):
+        """
+        Passing row level data from polling block to do model training by line
+        :param receive_data: passing row level data (1 row)
+        :param label_name: label name to pop
+        :return:
+        """
+        row = pd.Series(receive_data)
+        y = row.pop(label_name)
 
-        for record in polling_batch_data:
-            receive_data = record.value
-
-            row = pd.Series(receive_data)
-            # row = pd.read_json(json.dumps(
-            #     dict(receive_data),
-            #     typ='series',
-            #     orient='records'
-            # ))
-            y = row.pop('Y')
-
-            start_time = time.time()
+        '''model training => learn one
+        '''
+        start_time = time.time()
+        try:
             self.__model.learn_one(row, y)
-            end_time = time.time()
+        except Exception as e:
+            print(traceback.format_exc())
+        end_time = time.time()
 
-            self.__trained_event_counter += 1
+        self.__trained_event_counter += 1
 
-            print(
-                '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
-                    self.__trained_event_counter, (end_time - start_time) * 1000),
-                end='',
-                flush=True
-            )
+        print(
+            '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
+                self.__trained_event_counter, (end_time - start_time) * 1000),
+            end='',
+            flush=True
+        )
+
+    def train_model_by_one_polling_batch(self, polling_batch_data, label_name):
+        """
+        Responsible for extracting batch in one polling,
+        iterating row by row.
+        To do model updating while 1 polling batch is processed
+        :param polling_batch_data: 1 block of polling
+        :param label_name: label name to pop
+        :return:
+        """
+        for record in polling_batch_data:
+            '''Row level data extraction
+            '''
+            receive_data = record.value
+            self.train_model_by_one_row(receive_data, label_name=label_name)
 
         # Model has been updated
         self.__model_persisting_process_status = 'flushing'
+
 
     def stop(self):
         self.__server_status = 'stopped'
 
 
-    def run(self):
+    def run(self, consumer_run_mode='', label_name=''):
+
+        print("running mode: {}; {}".format(consumer_run_mode, label_name))
 
         self.__server_status = 'running'
 
-        while self.__server_status == 'running':
+        # To be configable in the future
+        # MODE == iterating OR polling
+        CONSUMER_RUN_MODE = consumer_run_mode
+        LABEL_NAME = label_name
 
-            # print("pooling message from kafka")
+        if CONSUMER_RUN_MODE == 'polling':
+            '''following block using polling method to do data extraction
+            '''
+            print("going to consumer kafka consumer in polling mode")
+            while self.__server_status == 'running':
+                data_polling_result = self.__kafka_consumer.poll(
+                    timeout_ms=1000,
+                    max_records=None,
+                    update_offsets=True
+                )
+                for key, value in data_polling_result.items():
+                    self.train_model_by_one_polling_batch(value, LABEL_NAME)
+                time.sleep(1)
 
-            data_polling_result = self.__kafka_consumer.poll(
-                timeout_ms=1000,
-                max_records=None,
-                update_offsets=True
-            )
+        elif CONSUMER_RUN_MODE == 'iteration':
+            ''' following block using iteration method to run new event from consumer
+            '''
+            print("going to consumer kafka consumer in interation mode")
+            for msg in self.__kafka_consumer:
+                receive_data = msg.value
 
-            for key, value in data_polling_result.items():
-                self.train_model_by_one_polling_batch(value)
+                row = pd.Series(receive_data)
+                y = row.pop(LABEL_NAME)
 
-            # print("end of this pooling, sleep 1 second")
-            time.sleep(1)
+                start_time = time.time()
+                try:
+                    self.__model.learn_one(row, y)
+                except Exception as e:
+                    print(traceback.format_exc())
+                end_time = time.time()
+
+                self.__trained_event_counter += 1
+                print(
+                    '\r #{} Events Trained, learn_one time spend:{} milliseconds. Offset{}'.format(
+                        self.__trained_event_counter, (end_time - start_time) * 1000, msg.offset),
+                    end='',
+                    flush=True
+                )
+
+                if self.__trained_event_counter % 500 == 0:
+                    self.__model_persisting_process_status = 'flushing'
+
+        else:
+            print("Cannot recognize running mode! please check!. Acceptance: 1. polling ; 2. iteration")
+            raise RuntimeError
 
     def run_model_persist(self):
 
@@ -213,7 +269,7 @@ class OnlineMachineTrainerRunner:
 
     def start_online_ml_server(self):
         print("start online machine learning server")
-        self._future = self._pool.submit(self.__server.run)
+        self._future = self._pool.submit(self.__server.run, consumer_run_mode='polling', label_name='Y')
 
     def start_persist_model(self):
         self._future = self._pool.submit(self.__server.run_model_persist)
