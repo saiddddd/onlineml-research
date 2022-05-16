@@ -15,6 +15,7 @@ from river import tree
 
 from concurrent import futures
 
+from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
 
 class OnlineMachineLearningServer:
 
@@ -185,6 +186,8 @@ class OnlineMachineLearningServer:
                         save_file_path='../../model_store',
                         save_file_name='testing_hoeffding_tree.pickle'
                     )
+                    tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
+                    tree_inspector.draw_tree(0, '../../output_plot/')
                     time.sleep(3)
                     send_signal_load_model('http://127.0.0.1:5000/model/')
                     self.__model_persisting_process_status = 'idle'
