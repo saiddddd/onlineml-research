@@ -17,3 +17,9 @@ class HoeffdingEnsembleTreeInspector:
         else:
             g = trees[tree_index].draw()
             g.render(output_fig_dir + "tree_inspect/AdaRF_tree{}_Structure_after_training_{}".format(tree_index, timestamp), format='png')
+
+    def get_tree_g(self, tree_index: int):
+
+        trees = self.__model.models
+        return trees[tree_index].draw()
+

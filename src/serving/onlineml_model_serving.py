@@ -14,6 +14,8 @@ from dash import Dash, html, dcc
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 
+from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
+
 
 class OnlineMachineLearningModelServing:
 
@@ -163,11 +165,23 @@ class OnlineMachineLearningModelServing:
 
             return df
 
+    def get_model_tree(self):
+
+        model_inspector = HoeffdingEnsembleTreeInspector(self.__model)
+        model_tree = model_inspector.get_tree_g(0)
+        model_tree.render()
+
     def get_x_axis(self):
         return self.__x_axis
 
     def get_accuracy(self):
         return self.__appending_acc
+
+    def get_f1_score(self):
+        return self.__appending_f1
+
+    def get_recall_rate(self):
+        return self.__appending_recall
 
     def run(self):
         self._future = self._pool.submit(self.app.run)
