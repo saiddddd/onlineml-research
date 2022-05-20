@@ -17,9 +17,19 @@ import plotly.graph_objects as go
 
 class OnlineMachineLearningModelServing:
 
+    # Singleton pattern design
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if OnlineMachineLearningModelServing._instance is None:
+            OnlineMachineLearningModelServing._instance = OnlineMachineLearningModelServing()
+        return OnlineMachineLearningModelServing._instance
+
+    # internal constructor
     def __init__(self):
         """
-        Serving
+        Initialization of model Serving
         """
         self._pool = futures.ThreadPoolExecutor(2)
         self._future = None
@@ -174,7 +184,7 @@ class OnlineMachineLearningModelServing:
             style={'backgroundColor': colors['background']},
             children=[
                 html.H1(
-                    children='Hello Dash',
+                    children='Online Machine Learning Checker',
                     style={
                         'textAlign': 'center',
                         'color': colors['text']
@@ -183,7 +193,7 @@ class OnlineMachineLearningModelServing:
                 html.Div(
                     children=
                     '''
-                    Dash: A web application framework for your data.
+                    Model Performance live-updating monitor
                     ''',
                     style={
                         'textAlign': 'center',
@@ -250,7 +260,7 @@ class OnlineMachineLearningModelServing:
 
 if __name__ == '__main__':
 
-    online_model_serving = OnlineMachineLearningModelServing()
+    online_model_serving = OnlineMachineLearningModelServing.get_instance()
     online_model_serving.run()
     online_model_serving.run_dash()
 
