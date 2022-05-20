@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 
 class OnlineMachineLearningModelServing:
 
-    # Singleton pattern design
+    # design in Singleton Pattern
     _instance = None
 
     @staticmethod
@@ -258,11 +258,89 @@ class OnlineMachineLearningModelServing:
 
 
 
+class ModelPerformanceMonitor:
+
+    # Design in Singleton Pattern
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+
+        if ModelPerformanceMonitor._instance is None:
+            ModelPerformanceMonitor._instance = ModelPerformanceMonitor()
+        return ModelPerformanceMonitor._instance
+
+    def __init__(self):
+
+        self._model_ml = OnlineMachineLearningModelServing.get_instance()
+        self.dash_display = Dash(__name__ + 'dash')
+
+        # Multiple components can update everytime interval gets fired.
+        @self.dash_display.callback(Output('live-update-graph', 'figure'),
+                                    Input('interval-component', 'n_intervals'))
+        def update_graph_live(n):
+            x_list = self._model_ml.get_x_axis()
+            y_list = self._model_ml.get_accuracy()
+            fig_acc = go.Figure()
+            fig_acc.add_trace(go.Scatter(
+                x=x_list, y=y_list, name='Accuracy',
+                line=dict(color='firebrick', width=4)
+            ))
+            fig_acc.update_layout(
+                title='Accuracy Trend Plot',
+                xaxis_title='Iteration(s)',
+                yaxis_title='Accuracy'
+            )
+            return fig_acc
+
+    def run_dash(self):
+
+        colors = {
+            'background': '#111111',
+            'text': '#7FDBFF'
+        }
+
+        self.dash_display.layout = html.Div(
+            style={'backgroundColor': colors['background']},
+            children=[
+                html.H1(
+                    children='Online Machine Learning Checker',
+                    style={
+                        'textAlign': 'center',
+                        'color': colors['text']
+                    }
+                ),
+                html.Div(
+                    children=
+                    '''
+                    Model Performance live-updating monitor
+                    ''',
+                    style={
+                        'textAlign': 'center',
+                        'color': colors['text']
+                    }
+                ),
+                dcc.Graph(id='live-update-graph'),
+                dcc.Interval(
+                    id='interval-component',
+                    interval=1 * 1000,  # in milliseconds
+                    n_intervals=0
+                )
+            ])
+
+        self.dash_display.run_server()
+        # self._future = self._pool.submit(self.dash_display.run_server)
+
+
+
+
 if __name__ == '__main__':
 
     online_model_serving = OnlineMachineLearningModelServing.get_instance()
     online_model_serving.run()
-    online_model_serving.run_dash()
+    model_checker = ModelPerformanceMonitor.get_instance()
+    model_checker.run_dash()
+    # online_model_serving.run_dash()
 
 
 
