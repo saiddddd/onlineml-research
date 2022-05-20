@@ -1,4 +1,4 @@
-import time
+import traceback
 
 from flask import Flask, request, Response, abort
 import pickle
@@ -38,8 +38,12 @@ class OnlineMachineLearningModelServing:
         self.dash_display = Dash(__name__+'dash')
 
         @self.app.route('/model/', methods=['POST'])
-        def model_load():
-
+        def load_model_api():
+            """
+            API to call server to load persist model from local file system
+            Ingress https request
+            :return:
+            """
             try:
                 raw_request_message = request.get_json()
                 read_path = raw_request_message['model_path']
@@ -50,25 +54,29 @@ class OnlineMachineLearningModelServing:
 
                 return Response(result_json, status=200, mimetype="application/json")
 
-            except:
-                print("get model path error, please check key is correct!")
+            except pickle.UnpicklingError as e:
+                # ts = traceback.extract_stack()
+                print(e.with_traceback())
+                print("Model Unpickling Error, please check the target is correct model pickle file.")
                 abort(404)
                 pass
+            except FileNotFoundError:
+                print("The file: \'{}\' Not Found!, please check.".format(read_path))
+                abort(404)
+                pass
+            finally:
+                print("Finish of handling this load model request")
 
         @self.app.route('/model/inference/', methods=['POST'])
-        def model_inference() -> Response:
+        def model_inference_api() -> Response:
             """
             Model inference api, request contain dataset which want to do predict
             label is not expect to be access in this api.
             :return: http response with prediction result in payload in json format
             """
-
             try:
-
                 df = extract_http_data_payload(request)
-
                 proba_list, is_target_list = self.inference(df)
-
                 return Response(json.dumps(proba_list), status=200, headers={'content-type': 'application/json'})
 
             except Exception as e:
@@ -184,8 +192,9 @@ class OnlineMachineLearningModelServing:
                 ),
                 dcc.Graph(id='live-update-graph'),
                 dcc.Interval(
-                    interval=1*1000,  # in milliseconds
-                    n_intervals=1000
+                    id='interval-component',
+                    interval=1 * 1000,  # in milliseconds
+                    n_intervals=0
                 )
             ])
 
