@@ -234,6 +234,7 @@ class OnlineMachineLearningServer:
 
         while self.__server_status == 'running':
 
+            print("going to persist model. status:{}".format(self.__model_persisting_process_status))
             time.sleep(10)
 
             if self.__model is not None and self.__model_persisting_process_status == 'flushing':
@@ -245,7 +246,10 @@ class OnlineMachineLearningServer:
                     tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
                     tree_inspector.draw_tree(0, '../../output_plot/')
                     time.sleep(3)
-                    send_signal_load_model('http://127.0.0.1:5000/model/')
+                    try:
+                        send_signal_load_model('http://127.0.0.1:5000/model/')
+                    except:
+                        print("Can not send signal to serving part for load model api")
                     self.__model_persisting_process_status = 'idle'
                 except FileNotFoundError:
                     print("Folder to persist model not found QQ! {}".format(os.getcwd()))
