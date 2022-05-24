@@ -31,7 +31,7 @@ class OnlineMachineLearningModelServing:
     # internal constructor
     def __init__(self):
         """
-        Initialization of model Serving
+        Initialization of model Serving.
         """
         self._pool = futures.ThreadPoolExecutor(2)
         self._future = None
@@ -87,7 +87,7 @@ class OnlineMachineLearningModelServing:
             :return: http response with prediction result in payload in json format
             """
             try:
-                df = extract_http_data_payload(request)
+                x_axis_item, df = extract_http_data_payload(request)
                 proba_list, is_target_list = self.inference(df)
                 return Response(json.dumps(proba_list), status=200, headers={'content-type': 'application/json'})
 
@@ -102,10 +102,11 @@ class OnlineMachineLearningModelServing:
 
             try:
 
-                df = extract_http_data_payload(request)
+                x_axis_item, df = extract_http_data_payload(request)
 
                 #TODO : let label name (Y) configurable
-                y = df.pop('Y')
+                y = df.pop('y')
+                index = df.pop('index')
 
                 proba_list, is_target_list = self.inference(df)
 
@@ -113,7 +114,10 @@ class OnlineMachineLearningModelServing:
                 recall = recall_score(y, is_target_list)
                 f1 = f1_score(y, is_target_list)
 
-                self.__x_axis.append(self.__x_counter)
+                if len(x_axis_item) > 0:
+                    self.__x_axis.append(x_axis_item)
+                else:
+                    self.__x_axis.append(str(self.__x_counter))
                 self.__x_counter += 1
                 self.__appending_acc.append(acc)
                 self.__appending_recall.append(recall)
@@ -161,9 +165,11 @@ class OnlineMachineLearningModelServing:
             """
 
             receive_data_payload = request_from_http.get_json()
-            df = pd.read_json(receive_data_payload)
 
-            return df
+            x_axis_item = receive_data_payload['x_axis_name']
+            df = pd.read_json(receive_data_payload['Data'])
+
+            return x_axis_item, df
 
     def get_model_tree(self):
 
