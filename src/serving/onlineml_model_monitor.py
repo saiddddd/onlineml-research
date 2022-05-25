@@ -57,6 +57,24 @@ class ModelPerformanceMonitor:
             )
             return fig_f1
 
+        @self.dash_display.callback(Output('model-performance-page', 'children'),
+                                    [Input('url', 'pathname')])
+        def display_page(pathname):
+            if pathname == '/inference_performance':
+                return html.Div([
+                    dcc.Graph(id='live-update-acc-graph'),
+                    dcc.Graph(id='live-update-f1-graph'),
+                    dcc.Interval(
+                        id='interval-component',
+                        interval=1 * 1000,  # in milliseconds
+                        n_intervals=0
+                    ),
+                ])
+            else:
+                return html.Div(
+                    html.H3("please go to page /inference_performance ")
+                )
+
 
 
 
@@ -69,33 +87,39 @@ class ModelPerformanceMonitor:
         }
 
         self.dash_display.layout = html.Div(
-            style={'backgroundColor': colors['background']},
-            children=[
-                html.H1(
-                    children='Online Machine Learning Checker',
-                    style={
-                        'textAlign': 'center',
-                        'color': colors['text']
-                    }
-                ),
+
+            [
+                dcc.Location(id='url', refresh=False),
+
+                # first division for title and web mete message
                 html.Div(
-                    children=
-                    '''
-                    Model Performance live-updating monitor
-                    ''',
-                    style={
-                        'textAlign': 'center',
-                        'color': colors['text']
-                    }
+                    style={'backgroundColor': colors['background']},
+                    children=[
+                        html.H1(
+                            children='Online Machine Learning Checker',
+                            style={
+                                'textAlign': 'center',
+                                'color': colors['text']
+                            }
+                        ),
+                        html.Div(
+                            children=
+                            '''
+                            Model Performance live-updating monitor
+                            ''',
+                            style={
+                                'textAlign': 'center',
+                                'color': colors['text']
+                            }
+                        ),
+                    ]
                 ),
-                dcc.Graph(id='live-update-acc-graph'),
-                dcc.Graph(id='live-update-f1-graph'),
-                dcc.Interval(
-                    id='interval-component',
-                    interval=1 * 1000,  # in milliseconds
-                    n_intervals=0
-                )
-            ])
+
+                # definition of plot at display function
+                html.Div(id="model-performance-page")
+
+            ]
+        )
 
         self.dash_display.run_server()
         # self._future = self._pool.submit(self.dash_display.run_server)
