@@ -2,14 +2,26 @@
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+import base64
 
 from serving.onlineml_model_serving import OnlineMachineLearningModelServing
 
 
+def grid_layout_tree_structure_inspect_display():
+    image_filename = '../../output_plot/online_monitoring/current_tree_structure.png'  # replace with your own image
+    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+    return html.Div([
+        html.H3("current Hoeffding Tree Structure"),
+        html.Br(),
+        html.Img(
+            src='data:image/png;base64,{}'.format(encoded_image.decode()),
+            title='live check model structure'
+        )
+    ])
+
 class ModelPerformanceMonitor:
 
     _instance = None
-
 
     @staticmethod
     def get_instance():
@@ -70,13 +82,20 @@ class ModelPerformanceMonitor:
                         n_intervals=0
                     ),
                 ])
+            elif pathname == '/current_model_structure':
+                return grid_layout_tree_structure_inspect_display()
+
+
             else:
-                return html.Div(
-                    html.H3("please go to page /inference_performance ")
-                )
-
-
-
+                return html.Div([
+                    dcc.Link(children='Go to Model Inference Performance Page.',
+                             href='/inference_performance'
+                             ),
+                    html.Br(),
+                    dcc.Link(children='Go to Model Structure inspection page.',
+                             href='/current_model_structure'
+                             )
+                ])
 
 
     def run_dash(self):
