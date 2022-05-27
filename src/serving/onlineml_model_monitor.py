@@ -7,8 +7,6 @@ import base64
 
 from serving.onlineml_model_serving import OnlineMachineLearningModelServing
 
-external_stylesheets = [dbc.themes.BOOTSTRAP]
-
 # Static method to show figure from local file
 
 
@@ -36,68 +34,75 @@ def tree_structure_inspect_display(display_fig_path: str):
 
 
 def grid_layout_tree_structure_inspect_display(display_fig_dir: str):
-    if os.path.isdir(display_fig_dir):
-        listing_image = glob.glob(display_fig_dir+'*.png')
-        print(listing_image)
 
-    image_filename = listing_image[5]  # image path
-    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+    def card_content_image_synthesis(image_filename: str):
 
-    card_content = [
-            dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True),
+        encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+        tree_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
+        card_content = [
+            dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True, style={'height':'200px', 'width':'100%'}),
             dbc.CardBody(
                 [
-                    html.H3("current Hoeffding Tree Structure"),
-                    # html.Br(),
-                    # html.Img(
-                    #     src='data:image/png;base64,{}'.format(encoded_image.decode()),
-                    #     title='live check model structure'
-                    # )
+                    html.H4("Tree Number: {}".format(tree_name), className="card-title"),
+                    html.P(
+                        "Some quick example text to build on the card title and "
+                        "make up the bulk of the card's content.",
+                        className="card-text",
+                    ),
+                    dbc.Button("Go somewhere", color="primary"),
                 ]
             ),
 
         ]
+        return card_content
 
-    # card = dbc.Card(
-    #     [
-    #         dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True),
-    #         dbc.CardBody(
-    #             [
-    #                 html.H3("current Hoeffding Tree Structure"),
-    #                 # html.Br(),
-    #                 # html.Img(
-    #                 #     src='data:image/png;base64,{}'.format(encoded_image.decode()),
-    #                 #     title='live check model structure'
-    #                 # )
-    #             ]
-    #         ),
-    #
-    #     ],
-    #     style={"width": "18rem"},
-    #     color="primary",
-    #     outline=True
-    # )
+    def build_img_card(image_filename):
+
+        card = dbc.Card(
+            card_content_image_synthesis(image_filename=image_filename),
+            # style={"width": "100%", "height": "100%"},
+            color='primary',
+            outline=True
+        )
+        return card
+
+
+    if os.path.isdir(display_fig_dir):
+        listing_image = glob.glob(display_fig_dir+'*.png')
+        listing_image.sort()
 
     return html.Div(
-        dbc.Row(
-            [
-                dbc.Col(dbc.Card(card_content, color='primary', outline=True, style={"maxWidth": "540px"})),
-            ]
-        )
+        [
+            html.Br(),
+            dbc.Row(
+                [
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[1]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[2]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[3]), color='primary', outline=True))
+                ],
+                align='center',
+            ),
+            html.Br(),
+            dbc.Row(
+                [
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[4]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[5]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[6]), color='primary', outline=True))
+                ],
+                align='center',
+            ),
+            html.Br(),
+            dbc.Row(
+                [
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[7]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[8]), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[9]), color='primary', outline=True))
+                ],
+                align='center',
+            ),
+
+        ]
     )
-
-    # return html.Div([
-    #             dbc.Row([
-    #                 dbc.Col([card]), dbc.Col([card]), dbc.Col([card]), dbc.Col([card]), dbc.Col([card])
-    #             ]),
-    #             dbc.Row([
-    #                 dbc.Col([card]), dbc.Col([card]), dbc.Col([card]), dbc.Col([card])
-    #             ]),
-    #             dbc.Row([
-    #                 dbc.Col([card]), dbc.Col([card])
-    #             ])
-    #         ])
-
 
 
 class ModelPerformanceMonitor:
@@ -113,7 +118,7 @@ class ModelPerformanceMonitor:
     def __init__(self):
 
         self._online_ml_server = OnlineMachineLearningModelServing.get_instance()
-        self.dash_display = Dash(__name__+'dash', external_stylesheets=external_stylesheets)
+        self.dash_display = Dash(__name__+'dash', external_stylesheets=[dbc.themes.BOOTSTRAP])
 
         # Multiple components can update everytime interval gets fired.
         @self.dash_display.callback(Output('live-update-acc-graph', 'figure'),
