@@ -56,16 +56,6 @@ def grid_layout_tree_structure_inspect_display(display_fig_dir: str):
         ]
         return card_content
 
-    def build_img_card(image_filename):
-
-        card = dbc.Card(
-            card_content_image_synthesis(image_filename=image_filename),
-            # style={"width": "100%", "height": "100%"},
-            color='primary',
-            outline=True
-        )
-        return card
-
 
     if os.path.isdir(display_fig_dir):
         listing_image = glob.glob(display_fig_dir+'*.png')
@@ -168,13 +158,13 @@ class ModelPerformanceMonitor:
                         n_intervals=0
                     ),
                 ])
-            elif pathname == '/current_model_structure':
-                return tree_structure_inspect_display(
-                    display_fig_path='../../output_plot/online_monitoring/current_tree_structure.png')
+            # elif pathname == '/current_model_structure':
+            #     return tree_structure_inspect_display(
+            #         display_fig_path='../../output_plot/online_monitoring/tree_inspection/current_tree_structure.png')
 
-            elif pathname == '/test_grid_display':
+            elif pathname == '/current_model_structure':
                 return grid_layout_tree_structure_inspect_display(
-                    display_fig_dir='../../output_plot/online_monitoring/'
+                    display_fig_dir='../../output_plot/online_monitoring/tree_inspection/'
                 )
             else:
                 return html.Div([

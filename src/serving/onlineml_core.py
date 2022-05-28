@@ -234,8 +234,9 @@ class OnlineMachineLearningServer:
 
         while self.__server_status == 'running':
 
-            print("going to persist model. status:{}".format(self.__model_persisting_process_status))
             time.sleep(10)
+            print("going to persist model. status:{}".format(self.__model_persisting_process_status))
+
 
             if self.__model is not None and self.__model_persisting_process_status == 'flushing':
                 try:
@@ -244,7 +245,13 @@ class OnlineMachineLearningServer:
                         save_file_name='testing_hoeffding_tree.pickle'
                     )
                     tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
-                    tree_inspector.draw_tree(0, '../../output_plot/')
+                    # tree_inspector.draw_tree(0, '../../output_plot/tree_inspect/')
+
+
+                    # updating current tree structure to /output_plot/online_monitoring
+                    # for checker inspection
+                    # tree_inspector.draw_tree(0, '../../output_plot/online_monitoring/', 'current_tree_structure')
+                    tree_inspector.draw_tree(None, '../../output_plot/online_monitoring/tree_inspection/', 'current_tree_structure')
                     time.sleep(3)
                     try:
                         send_signal_load_model('http://127.0.0.1:5000/model/')
