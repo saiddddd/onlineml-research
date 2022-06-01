@@ -33,60 +33,135 @@ def tree_structure_inspect_display(display_fig_path: str):
         ])
 
 
-def grid_layout_tree_structure_inspect_display(display_fig_dir: str):
+def card_content_image_synthesis_text_bottom(image_filename: str, style={}):
 
-    def card_content_image_synthesis(image_filename: str):
+    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+    tree_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
+    card_content = [
+        dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True, style=style),
+        dbc.CardBody(
+            [
+                html.H4("Tree Number: {}".format(tree_name), className="card-title"),
+                html.P(
+                    "Some quick example text to build on the card title and "
+                    "make up the bulk of the card's content.",
+                    className="card-text",
+                ),
+                dbc.Button("Go somewhere", color="primary"),
+            ]
+        ),
 
-        encoded_image = base64.b64encode(open(image_filename, 'rb').read())
-        tree_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
-        card_content = [
-            dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True, style={'height':'200px', 'width':'100%'}),
-            dbc.CardBody(
-                [
-                    html.H4("Tree Number: {}".format(tree_name), className="card-title"),
-                    html.P(
-                        "Some quick example text to build on the card title and "
-                        "make up the bulk of the card's content.",
-                        className="card-text",
+    ]
+    return card_content
+
+
+def card_content_image_synthesis_text_right(image_filename: str, style={}):
+    encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+    tree_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
+    card_content = [
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True, style=style),
+                    className="col-md-4",
+                ),
+                dbc.Col(
+                    dbc.CardBody(
+                        [
+                            html.H4("Card title", className="card-title"),
+                            html.P(
+                                "This is a wider card with supporting text "
+                                "below as a natural lead-in to additional "
+                                "content. This content is a bit longer.",
+                                className="card-text",
+                            ),
+                            html.Small(
+                                "Last updated 3 mins ago",
+                                className="card-text text-muted",
+                            ),
+                        ]
                     ),
-                    dbc.Button("Go somewhere", color="primary"),
-                ]
-            ),
+                    className="col-md-8",
+                ),
+            ],
+            className="g-0 d-flex align-items-center",
+        )
+    ]
+    return card_content
 
-        ]
-        return card_content
 
+def listall_layout_tree_structure_inspace_display(display_fig_dir: str, file_filter_pattern=''):
 
     if os.path.isdir(display_fig_dir):
-        listing_image = glob.glob(display_fig_dir+'*.png')
+        listing_image = glob.glob(display_fig_dir+'*'+file_filter_pattern+'*.png')
         listing_image.sort()
+
+    list_to_image_display = []
+
+    style = {'height': '50', 'width': '50%'}
+
+    for file in listing_image:
+
+        list_to_image_display.extend([
+            html.Br(),
+            dbc.Row(
+                [dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=file, style=style), color='primary', outline=True))],
+                align='center',
+            ),
+            html.Br()
+        ])
+    return html.Div(
+        list_to_image_display
+    )
+
+
+
+def grid_layout_tree_structure_inspect_display(display_fig_dir: str, file_filter_pattern=''):
+
+    listing_image = []
+
+    if os.path.isdir(display_fig_dir):
+        # TODO: Make glob add function to provide regex explaining pattern to filter file.
+        listing_image = glob.glob(display_fig_dir+'*'+file_filter_pattern+'*.png')
+        listing_image.sort()
+
+    style = {'height': '200px', 'width': '100%'}
 
     return html.Div(
         [
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[1]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[2]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[3]), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[1],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[2],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[3],
+                                                                              style=style), color='primary', outline=True))
                 ],
                 align='center',
             ),
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[4]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[5]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[6]), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[4],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[5],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[6],
+                                                                              style=style), color='primary', outline=True))
                 ],
                 align='center',
             ),
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[7]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[8]), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis(image_filename=listing_image[9]), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[7],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[8],
+                                                                              style=style), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(
+                        card_content_image_synthesis_text_bottom(image_filename=listing_image[9], style=style), color='primary', outline=True))
                 ],
                 align='center',
             ),
@@ -164,6 +239,10 @@ class ModelPerformanceMonitor:
 
             elif pathname == '/current_model_structure':
                 return grid_layout_tree_structure_inspect_display(
+                    display_fig_dir='../../output_plot/online_monitoring/tree_inspection/'
+                )
+            elif pathname == '/list_all_model_structure':
+                return listall_layout_tree_structure_inspace_display(
                     display_fig_dir='../../output_plot/online_monitoring/tree_inspection/'
                 )
             else:
