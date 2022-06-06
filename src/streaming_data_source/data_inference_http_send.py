@@ -1,8 +1,11 @@
 import time
+from tqdm import tqdm
 
 import pandas as pd
 import requests
 import json
+
+from src.streaming_data_source.data_sourcing import DataSourcingKafka
 
 api_url = 'http://127.0.0.1:5000/model/validation/'
 headers = {'content-type': 'application/json'}
@@ -38,6 +41,8 @@ class InferenceDataSender:
 
     def run(self, time_series_column):
 
+        kafka_sender = DataSourcingKafka()
+
         select_index = 0
 
         if time_series_column is not None:
@@ -71,16 +76,26 @@ class InferenceDataSender:
                 # response = requests.post(api_url, data=str(df_to_json), headers=headers)
                 response = requests.post(api_url, data=json.dumps(wrap_to_send), headers=headers)
 
-                print(df_to_json)
-                print(response.json())
+                # send to kafka
+                if kafka_sender is not None:
+                    sub_df.pop('index')
+                    df_to_send = sub_df.rename(columns={'y': 'Y'})
+
+                    for index, row in tqdm(df_to_send.iterrows(), total=df_to_send.shape[1]):
+                        kafka_sender.send_to_kafka(row, 'testTopic')
+
+
+                # print(df_to_json)
+                # print(response.json())
                 time.sleep(1)
             else:
                 break
 
 if __name__ == '__main__':
-    # sender = InferenceDataSender("../../playground/quick_study/dummy_toy/dummy_data.csv", 'index', 'Y')
-    sender = InferenceDataSender("../../data/stock_index_predict/eda_TW50_top30_append_test_start_from_2018.csv", 'index', 'LABEL')
-    sender.run('Date')
+    sender = InferenceDataSender("../../playground/quick_study/dummy_toy/dummy_data.csv", 'index', 'Y')
+
+    # sender = InferenceDataSender("../../data/stock_index_predict/eda_TW50_top30_append_test_start_from_2018.csv", 'index', 'LABEL')
+    sender.run(time_series_column='Date')
 
 
 
