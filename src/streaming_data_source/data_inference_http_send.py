@@ -54,14 +54,15 @@ class InferenceDataSender:
 
         while True:
 
-            x_axis_name = ''
+            x_axis_item = None
             if self._distinct_time is None:
                 sub_df = self._df.iloc[select_index:select_index+100]
+                x_axis_item = select_index
                 select_index += 100
             else:
                 try:
                     sub_df = self._df[self._df[time_series_column] == self._distinct_time[select_index]]
-                    x_axis_name = self._distinct_time[select_index]
+                    x_axis_item = self._distinct_time[select_index]
                     select_index += 1
                 except:
                     break
@@ -69,7 +70,8 @@ class InferenceDataSender:
             if len(sub_df.index) > 0:
                 df_to_json = sub_df.to_json()
                 wrap_to_send = {
-                    'x_axis_name': x_axis_name,
+                    'x_axis_name': x_axis_item,
+                    'label_name': 'y',
                     'Data': str(df_to_json)
                 }
 
@@ -85,8 +87,8 @@ class InferenceDataSender:
                         kafka_sender.send_to_kafka(row, 'testTopic')
 
 
-                # print(df_to_json)
-                # print(response.json())
+                print(df_to_json)
+                print(response.json())
                 time.sleep(1)
             else:
                 break

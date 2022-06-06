@@ -102,22 +102,24 @@ class OnlineMachineLearningModelServing:
 
             try:
 
-                x_axis_item, df = extract_http_data_payload(request)
+                x_axis_item, label_name, df = extract_http_data_payload(request)
 
-                #TODO : let label name (Y) configurable
-                y = df.pop('y')
-                index = df.pop('index')
+                y = df.pop(label_name)
 
+                # go model inference and get result
                 proba_list, is_target_list = self.inference(df)
 
                 acc = accuracy_score(y, is_target_list)
                 recall = recall_score(y, is_target_list)
                 f1 = f1_score(y, is_target_list)
 
-                if len(x_axis_item) > 0:
-                    self.__x_axis.append(x_axis_item)
-                else:
-                    self.__x_axis.append(str(self.__x_counter))
+                # if len(x_axis_item) > 0:
+                #     self.__x_axis.append(x_axis_item)
+                # else:
+                #     self.__x_axis.append(str(self.__x_counter))
+
+                self.__x_axis.append(x_axis_item)
+
                 self.__x_counter += 1
                 self.__appending_acc.append(acc)
                 self.__appending_recall.append(recall)
@@ -167,9 +169,10 @@ class OnlineMachineLearningModelServing:
             receive_data_payload = request_from_http.get_json()
 
             x_axis_item = receive_data_payload['x_axis_name']
+            label_name = receive_data_payload['label_name']
             df = pd.read_json(receive_data_payload['Data'])
 
-            return x_axis_item, df
+            return x_axis_item, label_name, df
 
     def get_model_tree(self):
 
