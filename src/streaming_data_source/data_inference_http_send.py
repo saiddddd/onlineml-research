@@ -29,12 +29,6 @@ class InferenceDataSender:
                 print("can not set {} as index, column not found! going to reset_index".format(index_name))
                 self._df.reset_index(inplace=True)
 
-        # set label column name as lowercase 'y'
-        try:
-            self._df.rename(columns={label_name:'y'}, inplace=True)
-        except:
-            print("can not replace {} as new label name \'y\', please check provided label name is correct!".format(label_name))
-
         print(self._df.head(5))
 
 
@@ -71,7 +65,7 @@ class InferenceDataSender:
                 df_to_json = sub_df.to_json()
                 wrap_to_send = {
                     'x_axis_name': x_axis_item,
-                    'label_name': 'y',
+                    'label_name': 'Y',
                     'Data': str(df_to_json)
                 }
 
@@ -81,9 +75,8 @@ class InferenceDataSender:
                 # send to kafka
                 if kafka_sender is not None:
                     sub_df.pop('index')
-                    df_to_send = sub_df.rename(columns={'y': 'Y'})
 
-                    for index, row in tqdm(df_to_send.iterrows(), total=df_to_send.shape[1]):
+                    for index, row in tqdm(sub_df.iterrows(), total=sub_df.shape[1]):
                         kafka_sender.send_to_kafka(row, 'testTopic')
 
 

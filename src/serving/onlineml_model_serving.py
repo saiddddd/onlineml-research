@@ -41,7 +41,6 @@ class OnlineMachineLearningModelServing:
         self.__model = None
 
         # variable for metrics display
-        self.__x_counter = 0
         self.__x_axis = []
         self.__appending_acc = []
         self.__appending_recall = []
@@ -113,14 +112,8 @@ class OnlineMachineLearningModelServing:
                 recall = recall_score(y, is_target_list)
                 f1 = f1_score(y, is_target_list)
 
-                # if len(x_axis_item) > 0:
-                #     self.__x_axis.append(x_axis_item)
-                # else:
-                #     self.__x_axis.append(str(self.__x_counter))
-
                 self.__x_axis.append(x_axis_item)
 
-                self.__x_counter += 1
                 self.__appending_acc.append(acc)
                 self.__appending_recall.append(recall)
                 self.__appending_f1.append(f1)
