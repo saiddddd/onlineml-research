@@ -1,15 +1,14 @@
 import time
-from abc import ABC, abstractmethod
+from datetime import datetime
 
+from abc import ABC, abstractmethod
+import pandas as pd
 import random
 
+import requests
+import json
 
-class Generator(ABC):
-
-    def __init__(self):
-        self._generator_engine = None
-
-    # def generate_one(self):
+from kafka import KafkaProducer
 
 
 class Engine:
@@ -183,35 +182,220 @@ class Features:
         else:
             raise RuntimeError
 
+class Generator(ABC):
+
+    def __init__(self):
+
+        self._gauss_random_generator = Features()
+        self._gauss_random_generator.random_distribution_function = 'gauss'
+        self._gauss_random_generator.sigma = 10
+        self._gauss_random_generator.mu = 100
+
+        self._exp_random_generator = Features()
+        self._exp_random_generator.random_distribution_function = 'expovariate'
+        self._exp_random_generator.exp_lambda = -1
+
+        self._kafka_producer = None
+
+    def init_kafka_producer(self, bootstrap_servers: str):
+        self._kafka_producer = KafkaProducer(
+            bootstrap_servers=bootstrap_servers
+        )
+        print("Successfully initialized kafka producer")
+
+    def generate_data(self, condition=0):
+        x1 = self._gauss_random_generator.get_feature_value()
+        x2 = self._gauss_random_generator.get_feature_value()
+        x3 = self._gauss_random_generator.get_feature_value()
+        x4 = self._gauss_random_generator.get_feature_value()
+        x5 = self._gauss_random_generator.get_feature_value()
+        x6 = self._gauss_random_generator.get_feature_value()
+
+        exp_decay = self._exp_random_generator.get_feature_value()
+
+
+        def get_y(condition):
+
+            y = 0
+            if condition == 0:
+                if (x1 > 100 and x2 < 100) or (x1 < 100 and x3 < 100):
+                    y = 1
+                else:
+                    y = 0
+            else:
+                if (x4 > 100 and x5 < 100) or (x4 < 100 and x6 < 100):
+                    y = 1
+                else:
+                    y = 0
+
+            if exp_decay > -3:
+                """ to make some rare exception case noice, if expovariate(-1) function < -2. flip y
+                """
+                if y == 0:
+                    y = 1
+                else:
+                    y = 0
+
+            return y
+
+        y = get_y(condition=condition)
+
+        data_dict = {
+            "X1": x1,
+            "X2": x2,
+            "X3": x3,
+            "X4": x4,
+            "X5": x5,
+            "X6": x6,
+            "Y": y
+        }
+
+        row = pd.Series(data_dict)
+
+        return row
+
+    def send_to_kafka(self, topic: str, data):
+
+        data_to_send = None
+        if isinstance(data, str):
+            data_to_send = bytes(data, 'utf-8')
+        elif isinstance(data, pd.Series):
+            data_to_send = bytes(str(data.to_json()), 'utf-8')
+        elif isinstance(data, bytearray):
+            data_to_send = data
+
+        if data_to_send is not None:
+            try:
+                self._kafka_producer.send(topic, data_to_send)
+                self._kafka_producer.flush()
+            except Exception as e:
+                e.with_traceback()
+
+    def run_dataset_pump_to_kafka(self, iteration=1000, time_interval=0):
+
+        for i in range(iteration):
+            self.send_to_kafka('testTopic', self.generate_data(condition=0))
+
+            if time_interval != 0:
+                time.sleep(time_interval)
+
+
+    def run_dataset_pump_to_inference_api(self, api_url: str):
+
+        headers = {'content-type': 'application/json'}
+        now = datetime.now()
+
+        row = self.generate_data(condition=0)
+        df_to_send = pd.DataFrame()
+        df_to_send = df_to_send.append(row, ignore_index=True)
+        # breakpoint()
+
+        for i in range(999):
+            row = self.generate_data(condition=0)
+            # df_temp = pd.DataFrame(row)
+            df_to_send = df_to_send.append(row, ignore_index=True)
+
+
+        print(df_to_send.head(5))
+
+        df_to_json = df_to_send.to_json()
+        wrap_to_send = {
+            'x_axis_name': now.strftime("%H:%M:%S"),
+            'label_name': 'Y',
+            'Data': str(df_to_json)
+        }
+
+        response = requests.post(api_url, data=json.dumps(wrap_to_send), headers=headers)
+        print(response)
+
+    # def generate_one(self):
+
 
 if __name__ == '__main__':
 
-    from matplotlib import pyplot as plt
-
-    feature1 = Features()
-    feature1.random_distribution_function = 'gauss'
-    feature1.sigma = 10
-    feature1.mu = 100
-
-
-    feature2 = Features()
-    feature2.random_distribution_function = 'expovariate'
-    feature2.exp_lambda = -1
-
-    data_pattern = DataPatternEnsembler()
-    data_pattern.add_feature('x1', feature1)
-    data_pattern.add_feature('x2', feature2)
-
-    print(data_pattern)
-
-    values = []
+    generator = Generator()
+    generator.init_kafka_producer('localhost:9092')
 
     while True:
-        values.append(feature2.get_feature_value())
+        generator.run_dataset_pump_to_kafka()
+        time.sleep(20)
+        generator.run_dataset_pump_to_inference_api('http://127.0.0.1:5000/model/validation/')
 
-        if len(values) > 100000:
-            break
+    #
+    # from matplotlib import pyplot as plt
+    #
+    # gauss_random_generator = Features()
+    # gauss_random_generator.random_distribution_function = 'gauss'
+    # gauss_random_generator.sigma = 10
+    # gauss_random_generator.mu = 100
+    #
+    # exp_random_generator = Features()
+    # exp_random_generator.random_distribution_function = 'expovariate'
+    # exp_random_generator.exp_lambda = -1
+    #
+    # # data_pattern = DataPatternEnsembler()
+    # # data_pattern.add_feature('x1', gauss_random_generator)
+    # # data_pattern.add_feature('x2', exp_random_generator)
+    # # print(data_pattern)
+    #
+    # values = []
+    #
+    # while True:
+    #     x1 = gauss_random_generator.get_feature_value()
+    #     x2 = gauss_random_generator.get_feature_value()
+    #     x3 = gauss_random_generator.get_feature_value()
+    #     x4 = gauss_random_generator.get_feature_value()
+    #     x5 = gauss_random_generator.get_feature_value()
+    #     x6 = gauss_random_generator.get_feature_value()
+    #
+    #     exp_decay = exp_random_generator.get_feature_value()
+    #
+    #     def get_y(condition=0):
+    #
+    #         y = 0
+    #         if condition == 0:
+    #             if (x1 > 100 and x2 < 100) or (x1 < 100 and x3 < 100):
+    #                 y = 1
+    #             else:
+    #                 y = 0
+    #         else:
+    #             if (x4 > 100 and x5 < 100) or (x4 < 100 and x6 < 100):
+    #                 y = 1
+    #             else:
+    #                 y = 0
+    #
+    #         if exp_decay > -2:
+    #             """ to make some rare exception case noice, if expovariate(-1) function < -2. flip y
+    #             """
+    #             if y == 0:
+    #                 y = 1
+    #             else:
+    #                 y = 0
+    #
+    #         return y
+    #
+    #     y = get_y(condition=0)
+    #
+    #     data_dict = {
+    #         "X1": x1,
+    #         "X2": x2,
+    #         "X3": x3,
+    #         "X4": x4,
+    #         "X5": x5,
+    #         "X6": x6,
+    #         "Y": y
+    #     }
+    #     values.append(y)
+    #
+    #     row = pd.Series(data_dict)
+    #
+    #     # print(row)
+    #     # time.sleep(1)
+    #
+    #     if len(values) > 100000:
+    #         break
+    #
+    #
+    # plt.hist(values, bins=100)
+    # plt.show()
 
-
-    plt.hist(values, bins=100)
-    plt.show()
