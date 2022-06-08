@@ -1,9 +1,11 @@
+import datetime
 import traceback
 
 from flask import Flask, request, Response, abort
 import pickle
 from concurrent import futures
 import pandas as pd
+import numpy as np
 from pandas import json_normalize
 import json
 
@@ -16,6 +18,40 @@ import plotly.graph_objects as go
 
 from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
 
+from matplotlib import pyplot as plt
+
+
+def draw_analyze_proba_distribution(pred_proba: np.array, is_target_list: pd.Series, fig_save_path: str):
+
+    pred_proba_result_true_class = pred_proba[is_target_list == 1]
+    pred_proba_result_false_class = pred_proba[is_target_list == 0]
+
+    plt.figure(figsize=(14, 4))
+    plt.suptitle('{}pred_proba_distribution'.format(''))
+    plt.subplot(131)
+    plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
+    plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
+    plt.yscale('log')
+    plt.title('stacking prediction proba in both class')
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.grid()
+    plt.legend()
+    plt.subplot(132)
+    plt.hist(pred_proba_result_true_class, bins=50)
+    plt.yscale('log')
+    plt.title('Y True class prediction proba. dist.')
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.grid()
+    plt.subplot(133)
+    plt.hist(pred_proba_result_false_class, bins=50)
+    plt.yscale('log')
+    plt.title('Y False class prediction proba. dist.')
+    plt.xlabel('pred proba')
+    plt.ylabel('statistics')
+    plt.grid()
+    plt.savefig(fig_save_path)
 
 class OnlineMachineLearningModelServing:
 
@@ -107,6 +143,10 @@ class OnlineMachineLearningModelServing:
 
                 # go model inference and get result
                 proba_list, is_target_list = self.inference(df)
+
+                pred_proba_nparray = np.array(proba_list)
+                time_stamp = datetime.datetime.now().strftime('%HH_%MM_%SS')
+                draw_analyze_proba_distribution(pred_proba_nparray, y, '../../output_plot/online_monitoring/model_perform_check/pred_proba_check_{}.png'.format(time_stamp))
 
                 acc = accuracy_score(y, is_target_list)
                 recall = recall_score(y, is_target_list)

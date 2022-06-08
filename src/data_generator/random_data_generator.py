@@ -316,9 +316,12 @@ if __name__ == '__main__':
     generator = Generator()
     generator.init_kafka_producer('localhost:9092')
 
+    generator.run_dataset_pump_to_kafka()
+    time.sleep(20)
+
     while True:
         generator.run_dataset_pump_to_kafka()
-        time.sleep(20)
+        time.sleep(5)
         generator.run_dataset_pump_to_inference_api('http://127.0.0.1:5000/model/validation/')
 
     #

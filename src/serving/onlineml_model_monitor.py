@@ -243,7 +243,7 @@ class ModelPerformanceMonitor:
                 )
             elif pathname == '/list_all_model_structure':
                 return listall_layout_tree_structure_inspace_display(
-                    display_fig_dir='../../output_plot/online_monitoring/tree_inspection/'
+                    display_fig_dir='../../output_plot/online_monitoring/model_perform_check/'
                 )
             else:
                 return html.Div([

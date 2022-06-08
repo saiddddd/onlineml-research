@@ -102,8 +102,15 @@ if __name__ == "__main__":
     pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
     pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data.csv")
     pumper.show_df()
+
+
+    # training
     pumper.run_dataset_pump_to_kafka(0, 600)
-    time.sleep(30)
+
+
+    time.sleep(10)
+
+    # prediction
     pumper.run_dataset_pump_to_inference_api(
         'http://127.0.0.1:5000/model/validation/',
         3000,
