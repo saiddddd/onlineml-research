@@ -26,8 +26,8 @@ def draw_analyze_proba_distribution(pred_proba: np.array, is_target_list: pd.Ser
     pred_proba_result_true_class = pred_proba[is_target_list == 1]
     pred_proba_result_false_class = pred_proba[is_target_list == 0]
 
-    plt.figure(figsize=(14, 4))
-    plt.suptitle('{}pred_proba_distribution'.format(''))
+    fig = plt.figure(figsize=(14, 4))
+    fig.suptitle('{}pred_proba_distribution'.format(''))
     plt.subplot(131)
     plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
     plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
@@ -51,7 +51,10 @@ def draw_analyze_proba_distribution(pred_proba: np.array, is_target_list: pd.Ser
     plt.xlabel('pred proba')
     plt.ylabel('statistics')
     plt.grid()
-    plt.savefig(fig_save_path)
+    # fig.savefig(fig_save_path)
+    # plt.savefig(fig_save_path)
+    return fig
+
 
 class OnlineMachineLearningModelServing:
 
@@ -81,6 +84,10 @@ class OnlineMachineLearningModelServing:
         self.__appending_acc = []
         self.__appending_recall = []
         self.__appending_f1 = []
+
+        # last prediction probability result and target answer
+        self.__last_pred_proba = None
+        self.__last_y_true = None
 
         self.dash_display = Dash(__name__+'dash')
 
@@ -143,10 +150,16 @@ class OnlineMachineLearningModelServing:
 
                 # go model inference and get result
                 proba_list, is_target_list = self.inference(df)
+                # Update last prediction proba and target y
+                self.__last_pred_proba = proba_list
+                self.__last_y_true = y
 
                 pred_proba_nparray = np.array(proba_list)
-                time_stamp = datetime.datetime.now().strftime('%HH_%MM_%SS')
-                draw_analyze_proba_distribution(pred_proba_nparray, y, '../../output_plot/online_monitoring/model_perform_check/pred_proba_check_{}.png'.format(time_stamp))
+                time_stamp = datetime.datetime.now().strftime('%HH-%MM-%SS')
+                draw_fig = draw_analyze_proba_distribution(pred_proba_nparray, y, '../../output_plot/web_checker_historical_check/model_pred_proba_distribution/pred_proba_check_{}.png'.format(time_stamp))
+                #saving figure
+                draw_fig.savefig('../../output_plot/web_checker_historical_check/model_pred_proba_distribution/pred_proba_check_{}.png'.format(time_stamp))
+                draw_fig.savefig('../../output_plot/web_checker_online_display/online_pred_proba_distribution/pred_proba_check.png')
 
                 acc = accuracy_score(y, is_target_list)
                 recall = recall_score(y, is_target_list)
@@ -224,6 +237,12 @@ class OnlineMachineLearningModelServing:
 
     def get_recall_rate(self):
         return self.__appending_recall
+
+    def get_last_pred_proba(self):
+        return self.__last_pred_proba
+
+    def get_last_y_true(self):
+        return self.__last_y_true
 
     def run(self):
         self._future = self._pool.submit(self.app.run)

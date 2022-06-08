@@ -4,44 +4,52 @@ import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import base64
+from PIL import Image
+from io import BytesIO
+
+from plotly.graph_objs import Layout
+import numpy as np
+from plotly import express as px
+
+
 
 from serving.onlineml_model_serving import OnlineMachineLearningModelServing
 
 # Static method to show figure from local file
 
 
-def tree_structure_inspect_display(display_fig_path: str):
-    if len(display_fig_path) > 0:
-        try:
-            image_filename = display_fig_path  # image path
-            encoded_image = base64.b64encode(open(image_filename, 'rb').read())
-            return html.Div([
-                html.H3("current Hoeffding Tree Structure"),
-                html.Br(),
-                html.Img(
-                    src='data:image/png;base64,{}'.format(encoded_image.decode()),
-                    title='live check model structure'
-                )
-            ])
-        except:
-            return html.Div([
-                html.H3("Model Structure inspection figure path is not correct: {}, fail to load image!".format(image_filename)),
-            ])
-    else:
-        return html.Div([
-            html.H3("invalid input, please support correct input figure path: grid_layout_tree_structure_inspect_display(<path>)"),
-        ])
+# def tree_structure_inspect_display(display_fig_path: str):
+#     if len(display_fig_path) > 0:
+#         try:
+#             image_filename = display_fig_path  # image path
+#             encoded_image = base64.b64encode(open(image_filename, 'rb').read())
+#             return html.Div([
+#                 html.H3("current Hoeffding Tree Structure"),
+#                 html.Br(),
+#                 html.Img(
+#                     src='data:image/png;base64,{}'.format(encoded_image.decode()),
+#                     title='live check model structure'
+#                 )
+#             ])
+#         except:
+#             return html.Div([
+#                 html.H3("Model Structure inspection figure path is not correct: {}, fail to load image!".format(image_filename)),
+#             ])
+#     else:
+#         return html.Div([
+#             html.H3("invalid input, please support correct input figure path: grid_layout_tree_structure_inspect_display(<path>)"),
+#         ])
 
 
-def card_content_image_synthesis_text_bottom(image_filename: str, style={}):
+def card_content_image_synthesis_text_bottom(image_filename: str, style={}, figure_title_prefix=''):
 
     encoded_image = base64.b64encode(open(image_filename, 'rb').read())
-    tree_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
+    figure_title_from_file_name = image_filename.split('/')[-1].split('.')[0].split('_')[-1]
     card_content = [
         dbc.CardImg(src='data:image/png;base64,{}'.format(encoded_image.decode()), top=True, style=style),
         dbc.CardBody(
             [
-                html.H4("Tree Number: {}".format(tree_name), className="card-title"),
+                html.H4("{}: {}".format(figure_title_prefix, figure_title_from_file_name), className="card-title"),
                 html.P(
                     "Some quick example text to build on the card title and "
                     "make up the bulk of the card's content.",
@@ -90,7 +98,7 @@ def card_content_image_synthesis_text_right(image_filename: str, style={}):
     return card_content
 
 
-def listall_layout_tree_structure_inspace_display(display_fig_dir: str, file_filter_pattern=''):
+def listall_layout_tree_structure_inspace_display(display_fig_dir: str, file_filter_pattern='', figure_title_prefix=''):
 
     if os.path.isdir(display_fig_dir):
         listing_image = glob.glob(display_fig_dir+'*'+file_filter_pattern+'*.png')
@@ -105,7 +113,11 @@ def listall_layout_tree_structure_inspace_display(display_fig_dir: str, file_fil
         list_to_image_display.extend([
             html.Br(),
             dbc.Row(
-                [dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=file, style=style), color='primary', outline=True))],
+                [dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                    image_filename=file,
+                    style=style,
+                    figure_title_prefix=figure_title_prefix
+                ), color='primary', outline=True))],
                 align='center',
             ),
             html.Br()
@@ -132,36 +144,63 @@ def grid_layout_tree_structure_inspect_display(display_fig_dir: str, file_filter
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[1],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[2],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[3],
-                                                                              style=style), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[1],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[2],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[3],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True))
                 ],
                 align='center',
             ),
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[4],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[5],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[6],
-                                                                              style=style), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[4],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[5],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[6],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True))
                 ],
                 align='center',
             ),
             html.Br(),
             dbc.Row(
                 [
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[7],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(image_filename=listing_image[8],
-                                                                              style=style), color='primary', outline=True)),
-                    dbc.Col(dbc.Card(
-                        card_content_image_synthesis_text_bottom(image_filename=listing_image[9], style=style), color='primary', outline=True))
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[7],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[8],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True)),
+                    dbc.Col(dbc.Card(card_content_image_synthesis_text_bottom(
+                        image_filename=listing_image[9],
+                        style=style,
+                        figure_title_prefix='Tree Number'
+                    ), color='primary', outline=True))
                 ],
                 align='center',
             ),
@@ -220,13 +259,47 @@ class ModelPerformanceMonitor:
             )
             return fig_f1
 
+        @self.dash_display.callback(Output('live-update-predict-proba', 'figure'),
+                                    Input('interval-component', 'n_intervals'))
+        def show_predict_proba_distribution(n):
+            encoded_image = base64.b64encode(open('../../output_plot/web_checker_online_display/online_pred_proba_distribution/pred_proba_check.png', 'rb').read())
+            img = Image.open(BytesIO(base64.b64decode(encoded_image)))
+
+            layout = Layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            fig_proba_dist = go.Figure(layout=layout)
+            fig_proba_dist.update_xaxes(visible=False, showticklabels=False)
+            fig_proba_dist.update_yaxes(visible=False, showticklabels=False)
+
+            fig_proba_dist.add_layout_image(
+                source=img,
+                xref="paper",
+                yref="paper",
+                x=0.1,
+                y=1,
+                sizex=1,
+                sizey=1,
+            )
+
+            return fig_proba_dist
+
+
         @self.dash_display.callback(Output('model-performance-page', 'children'),
                                     [Input('url', 'pathname')])
         def display_page(pathname):
             if pathname == '/inference_performance':
                 return html.Div([
-                    dcc.Graph(id='live-update-acc-graph'),
-                    dcc.Graph(id='live-update-f1-graph'),
+                    dbc.Row([
+                        dbc.Col(
+                            dcc.Graph(id='live-update-acc-graph'),
+                        ),
+                        dbc.Col(
+                            dcc.Graph(id='live-update-f1-graph'),
+                        )
+                    ]),
+                    dcc.Graph(id='live-update-predict-proba'),
                     dcc.Interval(
                         id='interval-component',
                         interval=1 * 1000,  # in milliseconds
@@ -235,21 +308,25 @@ class ModelPerformanceMonitor:
                 ])
             # elif pathname == '/current_model_structure':
             #     return tree_structure_inspect_display(
-            #         display_fig_path='../../output_plot/online_monitoring/tree_inspection/current_tree_structure.png')
+            #         display_fig_path='../../output_plot/web_checker_historical_check/tree_inspection/current_tree_structure.png')
 
             elif pathname == '/current_model_structure':
                 return grid_layout_tree_structure_inspect_display(
-                    display_fig_dir='../../output_plot/online_monitoring/tree_inspection/'
+                    display_fig_dir='../../output_plot/web_checker_historical_check/tree_inspection/'
                 )
-            elif pathname == '/list_all_model_structure':
+            elif pathname == '/predict_proba_distribution_history':
                 return listall_layout_tree_structure_inspace_display(
-                    display_fig_dir='../../output_plot/online_monitoring/model_perform_check/'
+                    display_fig_dir='../../output_plot/web_checker_historical_check/model_pred_proba_distribution/',
+                    figure_title_prefix='snapshot timestamp'
                 )
             else:
                 return html.Div([
                     dcc.Link(children='Go to Model Inference Performance Page.',
                              href='/inference_performance'
                              ),
+                    html.Br(),
+                    dcc.Link(children='Go to Model Prediction Proba Distribution history check',
+                             href='/predict_proba_distribution_history'),
                     html.Br(),
                     dcc.Link(children='Go to Model Structure inspection page.',
                              href='/current_model_structure'
