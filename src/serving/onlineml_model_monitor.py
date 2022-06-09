@@ -285,6 +285,35 @@ class ModelPerformanceMonitor:
 
             return fig_proba_dist
 
+        @self.dash_display.callback(Output('live-update-tree-structure', 'figure'),
+                                    Input('interval-component', 'n_intervals'))
+        def show_online_tree_structure(n):
+            encoded_image = base64.b64encode(
+                open('../../output_plot/web_checker_online_display/online_tree_inspection/current_tree_structure_tree_0.png',
+                     'rb').read())
+            img = Image.open(BytesIO(base64.b64decode(encoded_image)))
+
+            layout = Layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            fig_tree = go.Figure(layout=layout)
+            fig_tree.update_xaxes(visible=False, showticklabels=False)
+            fig_tree.update_yaxes(visible=False, showticklabels=False)
+
+            fig_tree.add_layout_image(
+                source=img,
+                xref="paper",
+                yref="paper",
+                x=0.1,
+                y=1,
+                sizex=1,
+                sizey=1,
+            )
+
+            return fig_tree
+
+
 
         @self.dash_display.callback(Output('model-performance-page', 'children'),
                                     [Input('url', 'pathname')])
@@ -300,19 +329,17 @@ class ModelPerformanceMonitor:
                         )
                     ]),
                     dcc.Graph(id='live-update-predict-proba'),
+                    dcc.Graph(id='live-update-tree-structure'),
                     dcc.Interval(
                         id='interval-component',
                         interval=1 * 1000,  # in milliseconds
                         n_intervals=0
                     ),
                 ])
-            # elif pathname == '/current_model_structure':
-            #     return tree_structure_inspect_display(
-            #         display_fig_path='../../output_plot/web_checker_historical_check/tree_inspection/current_tree_structure.png')
 
             elif pathname == '/current_model_structure':
                 return grid_layout_tree_structure_inspect_display(
-                    display_fig_dir='../../output_plot/web_checker_historical_check/tree_inspection/'
+                    display_fig_dir='../../output_plot/web_checker_online_display/online_tree_inspection/'
                 )
             elif pathname == '/predict_proba_distribution_history':
                 return listall_layout_tree_structure_inspace_display(

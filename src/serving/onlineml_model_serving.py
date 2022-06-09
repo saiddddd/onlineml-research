@@ -143,7 +143,6 @@ class OnlineMachineLearningModelServing:
         def model_validation():
 
             try:
-
                 x_axis_item, label_name, df = extract_http_data_payload(request)
 
                 y = df.pop(label_name)
