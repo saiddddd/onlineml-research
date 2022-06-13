@@ -322,7 +322,7 @@ if __name__ == '__main__':
     while True:
         generator.run_dataset_pump_to_kafka()
         time.sleep(5)
-        generator.run_dataset_pump_to_inference_api('http://127.0.0.1:5000/model/validation/')
+        # generator.run_dataset_pump_to_inference_api('http://127.0.0.1:5000/model/validation/')
 
     #
     # from matplotlib import pyplot as plt

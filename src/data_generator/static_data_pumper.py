@@ -65,7 +65,7 @@ class DataPumper:
             if time_interval != 0:
                 time.sleep(time_interval)
 
-    def run_dataset_pump_to_inference_api(self, api_url: str, start_row=0, end_row=None, batch_size=10, is_online_learning=False):
+    def run_dataset_pump_to_inference_api(self, api_url: str, start_row=0, end_row=None, batch_size=10, label_name='Y', x_axis_item='offset'):
 
         headers = {'content-type': 'application/json'}
 
@@ -78,7 +78,7 @@ class DataPumper:
                 df_to_json = sub_df_to_send.to_json()
                 wrap_to_send = {
                     'x_axis_name': sending_offset,
-                    'label_name': 'Y',
+                    'label_name': label_name,
                     'Data': str(df_to_json)
                 }
 
@@ -100,12 +100,13 @@ if __name__ == "__main__":
 
     pumper = DataPumper()
     pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
-    pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data.csv")
+    # pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data.csv")
+    pumper.load_data_from_csv("../../data/stock_index_predict/eda_TW50_top30_append.csv")
     pumper.show_df()
 
 
     # training
-    pumper.run_dataset_pump_to_kafka(0, 600)
+    pumper.run_dataset_pump_to_kafka(42982, 99925)
 
 
     time.sleep(10)
@@ -113,7 +114,8 @@ if __name__ == "__main__":
     # prediction
     pumper.run_dataset_pump_to_inference_api(
         'http://127.0.0.1:5000/model/validation/',
-        3000,
+        99925,
         end_row=None,
-        batch_size=100
+        batch_size=30,
+        label_name='LABEL'
     )

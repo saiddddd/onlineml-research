@@ -157,6 +157,7 @@ class OnlineMachineLearningServer:
 
         # Model has been updated
         self.__model_persisting_process_status = 'flushing'
+        print('labeling model persisting status on')
 
 
     def stop(self):
@@ -196,13 +197,20 @@ class OnlineMachineLearningServer:
                 receive_data = msg.value
 
                 row = pd.Series(receive_data)
+                row.drop('DailyReturn', inplace=True)
+                row.drop('Date', inplace=True)
                 y = row.pop(LABEL_NAME)
+
+                if row is None or y is None:
+                    continue
 
                 start_time = time.time()
                 try:
                     self.__model.learn_one(row, y)
-                except Exception as e:
-                    print(traceback.format_exc())
+                except AttributeError:
+                    print("attributeError from model training")
+                    # print(traceback.format_exc())
+                    pass
                 end_time = time.time()
 
                 self.__trained_event_counter += 1
@@ -215,6 +223,7 @@ class OnlineMachineLearningServer:
 
                 if self.__trained_event_counter % 500 == 0:
                     self.__model_persisting_process_status = 'flushing'
+                    print('labeling model persisting status on')
 
         else:
             print("Cannot recognize running mode! please check!. Acceptance: 1. polling ; 2. iteration")
@@ -234,32 +243,40 @@ class OnlineMachineLearningServer:
 
         while self.__server_status == 'running':
 
-            time.sleep(10)
+            time.sleep(1)
             print("going to persist model. status:{}".format(self.__model_persisting_process_status))
 
 
             if self.__model is not None and self.__model_persisting_process_status == 'flushing':
                 try:
                     self._save_model(
-                        save_file_path='../../model_store',
-                        save_file_name='testing_hoeffding_tree.pickle'
+                        save_file_path="../../model_store",
+                        save_file_name="testing_hoeffding_tree.pickle"
                     )
                     tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
                     # tree_inspector.draw_tree(0, '../../output_plot/tree_inspect/')
 
 
-                    # updating current tree structure to /output_plot/online_monitoring
+                    # updating current tree structure to /output_plot/web_checker_historical_check
                     # for checker inspection
-                    # tree_inspector.draw_tree(0, '../../output_plot/online_monitoring/', 'current_tree_structure')
-                    tree_inspector.draw_tree(None, '../../output_plot/online_monitoring/tree_inspection/', 'current_tree_structure')
+                    # tree_inspector.draw_tree(0, '../../output_plot/web_checker_historical_check/', 'current_tree_structure')
+                    tree_inspector.draw_tree(None,
+                                             "../../output_plot/web_checker_online_display/online_tree_inspection/",
+                                             "current_tree_structure")
+                    timestamp = datetime.now().strftime('%y-%m-%d-%H-%M-%S')
+                    tree_inspector.draw_tree(0,
+                                             "../../output_plot/web_checker_historical_check/tree_inspection/",
+                                             "{}_tree_structure".format(timestamp))
                     time.sleep(3)
                     try:
-                        send_signal_load_model('http://127.0.0.1:5000/model/')
+                        send_signal_load_model("http://127.0.0.1:5000/model/")
                     except:
                         print("Can not send signal to serving part for load model api")
                     self.__model_persisting_process_status = 'idle'
                 except FileNotFoundError:
                     print("Folder to persist model not found QQ! {}".format(os.getcwd()))
+                except Exception:
+                    print("An Unexpected Error happen in model persist thread!")
 
             elif self.__model_persisting_process_status == 'idle':
                 print('Model is not been updated, persist process in idle status')
@@ -280,7 +297,7 @@ class OnlineMachineTrainerRunner:
 
     def start_online_ml_server(self):
         print("start online machine learning server")
-        self._future = self._pool.submit(self.__server.run, consumer_run_mode='polling', label_name='Y')
+        self._future = self._pool.submit(self.__server.run, consumer_run_mode='iteration', label_name='LABEL')
 
     def start_persist_model(self):
         self._future = self._pool.submit(self.__server.run_model_persist)
