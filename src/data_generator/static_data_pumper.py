@@ -65,31 +65,77 @@ class DataPumper:
             if time_interval != 0:
                 time.sleep(time_interval)
 
-    def run_dataset_pump_to_inference_api(self, api_url: str, start_row=0, end_row=None, batch_size=10, label_name='Y', x_axis_item='offset'):
+    def run_dataset_pump_to_inference_api(self, api_url: str, start_row=0, end_row=None, batch_size=10,
+                                          label_name='Y', time_series_column_name=''):
 
         headers = {'content-type': 'application/json'}
 
         slicing_df = self._df.iloc[start_row: end_row]
         sending_offset = 0
 
+        distinct_time = None
+        if len(time_series_column_name) >= 1:
+            try:
+                distinct_time = sorted(slicing_df[time_series_column_name].unique())
+                print(distinct_time)
+            except:
+                print("Column {} not found!".format(time_series_column_name))
+
+
+        # initialization of slicing data frame and offset
+        # slicing_df = None
+        # sending_offset = 0
+
+        # if distinct_time is None:
+        # print("time series is not provided, used row number based slicing")
+
+
         while True:
-            sub_df_to_send = slicing_df[sending_offset:sending_offset+batch_size]
+
+
+            if distinct_time is None:
+                sub_df_to_send = slicing_df[sending_offset:sending_offset+batch_size]
+            else:
+                sub_df_to_send = slicing_df[slicing_df[time_series_column_name] == distinct_time[sending_offset]]
+
+
             if len(sub_df_to_send.index) > 0:
+                '''
+                ================================================================
+                Sending to Online ML server Prediction API to do model inference
+                ================================================================
+                '''
+                x_axis_name = sending_offset
+                if distinct_time is not None:
+                    x_axis_name = distinct_time[sending_offset]
+
                 df_to_json = sub_df_to_send.to_json()
                 wrap_to_send = {
-                    'x_axis_name': sending_offset,
+                    'x_axis_name': x_axis_name,
                     'label_name': label_name,
                     'Data': str(df_to_json)
                 }
-
                 response = requests.post(api_url, data=json.dumps(wrap_to_send), headers=headers)
                 print(response)
 
+                '''
+                ===================================================
+                 Sending back to kafka to do online model training
+                ===================================================
+                '''
                 for index, row in tqdm(slicing_df[sending_offset:sending_offset+batch_size].iterrows(), total=batch_size):
                     self.send_to_kafka('testTopic', row)
 
-                sending_offset += batch_size
-                time.sleep(1)
+                '''
+                ==============================
+                 sender offset move one step
+                ==============================
+                '''
+                if distinct_time is None:
+                    sending_offset += batch_size
+                else:
+                    sending_offset += 1
+                time.sleep(5)
             else:
                 break
 
@@ -106,10 +152,10 @@ if __name__ == "__main__":
 
 
     # training
-    pumper.run_dataset_pump_to_kafka(42982, 99925)
-
-
-    time.sleep(10)
+    # pumper.run_dataset_pump_to_kafka(70000, 99925)
+    #
+    #
+    # time.sleep(100)
 
     # prediction
     pumper.run_dataset_pump_to_inference_api(
@@ -117,5 +163,6 @@ if __name__ == "__main__":
         99925,
         end_row=None,
         batch_size=30,
-        label_name='LABEL'
+        label_name='LABEL',
+        time_series_column_name='Date'
     )
