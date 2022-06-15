@@ -238,7 +238,8 @@ class ModelPerformanceMonitor:
             fig_acc.update_layout(
                 title='Accuracy Trend Plot',
                 xaxis_title='Iteration(s)',
-                yaxis_title='Accuracy'
+                yaxis_title='Accuracy',
+                yaxis_range=[0, 1]
             )
             return fig_acc
 
@@ -255,15 +256,20 @@ class ModelPerformanceMonitor:
             fig_f1.update_layout(
                 title='f1 scores Trend Plot',
                 xaxis_title='Iteration(s)',
-                yaxis_title='Accuracy'
+                yaxis_title='Accuracy',
+                yaxis_range=[0, 1]
             )
             return fig_f1
 
         @self.dash_display.callback(Output('live-update-predict-proba', 'figure'),
                                     Input('interval-component', 'n_intervals'))
         def show_predict_proba_distribution(n):
-            encoded_image = base64.b64encode(open('../../output_plot/web_checker_online_display/online_pred_proba_distribution/pred_proba_check.png', 'rb').read())
-            img = Image.open(BytesIO(base64.b64decode(encoded_image)))
+            img = None
+            try:
+                encoded_image = base64.b64encode(open('../../output_plot/web_checker_online_display/online_pred_proba_distribution/pred_proba_check.png', 'rb').read())
+                img = Image.open(BytesIO(base64.b64decode(encoded_image)))
+            except FileNotFoundError:
+                pass
 
             layout = Layout(
                 paper_bgcolor='rgba(0,0,0,0)',
