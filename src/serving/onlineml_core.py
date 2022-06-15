@@ -18,6 +18,7 @@ from concurrent import futures
 
 from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
 
+
 class OnlineMachineLearningServer:
 
     def __init__(self):
@@ -30,7 +31,7 @@ class OnlineMachineLearningServer:
         self._init_kafka_consumer(
             connection_try_times=3
         )
-        self._init_model()
+        self._init_model('../../model_store/pretrain_model_persist/')
 
     @property
     def server_status(self):
@@ -68,25 +69,48 @@ class OnlineMachineLearningServer:
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
         )
 
-    def _init_model(self):
+    def _init_model(self, load_model_dir: str):
         """
         initializing of model
         :return:
         """
 
-        self.__model = ensemble.AdaBoostClassifier(
-            model=(
-                tree.HoeffdingAdaptiveTreeClassifier(
-                    max_depth=3,
-                    split_criterion='gini',
-                    split_confidence=1e-2,
-                    grace_period=10,
-                    seed=0
-                )
-            ),
-            n_models=10,
-            seed=42
-        )
+        ''' load model from pickle if pre-train model exist '''
+        if os.path.isdir(load_model_dir):
+            print("checking {} for pre-train model".format(load_model_dir))
+            try:
+                pretrain_model_path = load_model_dir+'testing_hoeffding_tree_pretrain_model.pickle'
+                with open(pretrain_model_path, 'rb') as f:
+                    self.__model = pickle.load(f)
+                    print('load pre-train model for {} successfully.'.format(pretrain_model_path))
+
+                    ''' model structure inspect, saving figure. '''
+                    tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
+                    tree_inspector.draw_tree(None,
+                                             "../../output_plot/web_checker_online_display/online_tree_inspection/",
+                                             "current_tree_structure")
+
+            except FileNotFoundError:
+                print("File not found! please check dir {} and pickle exist".format(load_model_dir))
+
+
+        if self.__model is None:
+            '''  In the case that pre-train model not found. initialized model. '''
+
+            print('pretrain model file not found! initialize a new model')
+            self.__model = ensemble.AdaBoostClassifier(
+                model=(
+                    tree.HoeffdingAdaptiveTreeClassifier(
+                        max_depth=3,
+                        split_criterion='gini',
+                        split_confidence=1e-2,
+                        grace_period=10,
+                        seed=0
+                    )
+                ),
+                n_models=10,
+                seed=42
+            )
 
     def _save_model(self, save_file_path='', save_file_name=''):
 
