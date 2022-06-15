@@ -76,7 +76,7 @@ class DataPumper:
         distinct_time = None
         if len(time_series_column_name) >= 1:
             try:
-                distinct_time = sorted(slicing_df[time_series_column_name].unique())
+                distinct_time = sorted(slicing_df[time_series_column_name].str[:7].unique())
                 print(distinct_time)
             except:
                 print("Column {} not found!".format(time_series_column_name))
@@ -96,7 +96,7 @@ class DataPumper:
             if distinct_time is None:
                 sub_df_to_send = slicing_df[sending_offset:sending_offset+batch_size]
             else:
-                sub_df_to_send = slicing_df[slicing_df[time_series_column_name] == distinct_time[sending_offset]]
+                sub_df_to_send = slicing_df[slicing_df[time_series_column_name].str[:7] == distinct_time[sending_offset]]
 
 
             if len(sub_df_to_send.index) > 0:
@@ -123,7 +123,7 @@ class DataPumper:
                  Sending back to kafka to do online model training
                 ===================================================
                 '''
-                for index, row in tqdm(slicing_df[sending_offset:sending_offset+batch_size].iterrows(), total=batch_size):
+                for index, row in tqdm(sub_df_to_send.iterrows(), total=sub_df_to_send.shape[0]):
                     self.send_to_kafka('testTopic', row)
 
                 '''
@@ -135,7 +135,7 @@ class DataPumper:
                     sending_offset += batch_size
                 else:
                     sending_offset += 1
-                time.sleep(5)
+                time.sleep(10)
             else:
                 break
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
 
     # training
-    # pumper.run_dataset_pump_to_kafka(70000, 99925)
+    # pumper.run_dataset_pump_to_kafka(80000, 99925)
     #
     #
     # time.sleep(100)
