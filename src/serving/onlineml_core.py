@@ -90,6 +90,16 @@ class OnlineMachineLearningServer:
                                              "../../output_plot/web_checker_online_display/online_tree_inspection/",
                                              "current_tree_structure")
 
+                    ''' notify serving part to load model'''
+                    try:
+                        response = requests.post(
+                            "http://127.0.0.1:5000/model/",
+                            data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
+                            headers={'content-type': 'application/json'}
+                        )
+                    except:
+                        print("Can not send signal to serving part for load model api")
+
             except FileNotFoundError:
                 print("File not found! please check dir {} and pickle exist".format(load_model_dir))
 
