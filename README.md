@@ -33,6 +33,19 @@ under streaming regime, the real-time data provide profit if ML system can extra
 
 Let ML model training processing ingress real-time event data, the system can be design in different architecture. Instead of loading whole dataset into main memory at the same time. Model can ingress row-level data, so called, Event. Caching by specific designed Model data structure, integral statistics for model training control by `Hoeffding Inequality` to make sure statistics at time T is enough to go through one model training process. After that, those event data observation can be removed from memory and no need to keep them from the disk, the strategy called `one-pass learning`.
 
+### Benefit
+ * No need Database to persist data for ML.
+ * No need to load whole dataset into main memory as the same time
+ * Get rid of data purge policy of DB
+ * Seemly ingress data minimizing time latency 
+ * Available to run through potentially infinitely large dataset
+
+Comparing with traditional ML training method, which have to persist data into Database or File System, and accumulating data, and trigger model training after that by batch process. The potential time latency coming from data taking for accumulated enough statistics to do ML training. Usually, ML training system can only access mirrored DB cluster, seperated from production. Data dump period depends on system's capacity and business requirement, from several hours to several days is possible. 
+The following scenario describe a web-services accumulating user's operation log, that is tremendous amount of data and difficult to persist for long time. Thus, those data have to  purge frequently. Also, heave data I/O consume DB server and disk r/w resource.
+Once to put ML training onto data pipeline, Model can consume real time data and do action as soon as possible, also get rid of databases restrictions. 
+
+![image](https://i.imgur.com/XnEhaJp.png)
+
 ## The Model
 The core model is running the _**Hoeffding Tree**_, which can take [Mining High-Speed Data Streams](https://homes.cs.washington.edu/~pedrod/papers/kdd00.pdf) as reference. To put it in a nutshell, It is a tree based model and applies _**Hoeffding Inequality**_ while processing streaming data. The properties of streaming data: 
 * Never-ending
@@ -43,6 +56,8 @@ The Hoeffding Inequality provide the minimum number of observations needed while
 
 > if set tolerance error $\epsilon \equiv$ ( Observation - Ground True), is restricted at 1%. what is relative statistic I need while sampling?
  
+
+![image](https://miro.medium.com/max/960/1*PH1Zh6KmBNwyq8xD4GbnGw.gif)
 
 ## Mathematics
 
@@ -63,3 +78,8 @@ $$\mathbb{P}[ \mid\nu-\mu\mid > \epsilon ] \leq 2 exp(-2\epsilon^{2}N)$$
 
 
 The ν stands for observed value with N sampling, and μ for exact value if calculating whole population is possible. The left-hand side of inequality represents of probability of separation between ν and μ exceeds from error tolerance ε. This probability would be decreasing exponentially while number of sample token increase while shows in the right-hand side of equation.
+
+for example, to estimate population annual income in Taiwan, that distribution is complicated ,but we simplified it as a skew-gaussian pdf. If randomly generate 10 event and calculated mean value, the uncertainty is quite large comparing with the case using 1000 random sampling.
+
+![image](https://i.imgur.com/6Obf1WX.gif)
+
