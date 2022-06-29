@@ -24,7 +24,7 @@ The high-level picture of streaming data pipeline can be roughly decomposed into
 
 The concrete architecture designs by most of the companies, The Streaming Engine is powered by Apache Spark (or Flink is an alternative options), Integrated by message queue to decouple streaming engine from upstream services and downstream services is the best choose, e.g. Kafka.
 
-[Imgur](https://i.imgur.com/GM3IIUK.png)
+![image](https://i.imgur.com/GM3IIUK.png)
 
 Streaming can be considered as end-less features, thus, the size streaming dataset us various based on the event flux and time period of data taking. An infinity large dataset emerge if data acquisition running as a non-stop service. 
 under streaming regime, the real-time data provide profit if ML system can extract information from them.
