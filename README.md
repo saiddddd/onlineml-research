@@ -2,14 +2,14 @@
 
 ## Introduction
 The **Online Machine Learning** is a service that could apply on streaming data pipeline.  
-Streaming technique is using widely in various topic, or more precisely, every raw data acquisition is working streamly, e.g. thermometer reading, vibration detection from tools in manufacture industries, for clicking data extracted from Web-services, or financial transaction data. 
+Streaming technique is using widely on various topics. More precisely, every raw data acquisition is streamly reading, e.g. sensor reading, transaction events, services log ... etc. 
 What if we try to analysis those streaming data from source directly right away that data created.
-But the integration of machine technique and Data Streaming pipeline is still an open question nowadays.
+But how to integrate streaming data pipeline together with ML platform is still an open question nowadays.
 
 Different from traditional Machine Learning processes. The Online Machine Learning can ingress row-level data, so called `Event`. Incrementally learning by real-time event data, model can be updated when new data coming. Thus, the meaning of _**Online**_ can be thought as **_ON-the-data-pipeLINE_**.
 
 ## Motivation
-Technically speaking, every data sources is collecting streamly, e.g. thermometer. Let's concluded the basic properties for this type of data.
+Technically speaking, every data sources is collecting streamly. Let's concluded the basic properties for this type of data.
 
 * streaming data can be generated anytime and accessed by AP server.
 * Technically, streaming is considered as never-ending source
@@ -17,7 +17,21 @@ Technically speaking, every data sources is collecting streamly, e.g. thermomete
 
 Based on aforementioned properties, build up an incrementally-training ML model can leverage steaming data application. To maximize the ability of streaming event application. 
 
-## Streaming Data
+## Streaming Data Pipeline
+
+The high-level picture of streaming data pipeline can be roughly decomposed into three parts. The upstream data source and downstream applications, while logical implementation executing by streaming engine in the middle. 
+
+
+The concrete architecture designs by most of the companies, The Streaming Engine is powered by Apache Spark (or Flink is an alternative options), Integrated by message queue to decouple streaming engine from upstream services and downstream services is the best choose, e.g. Kafka.
+
+![image](https://imgur.com/GM3IIUK)
+
+Streaming can be considered as end-less features, thus, the size streaming dataset us various based on the event flux and time period of data taking. An infinity large dataset emerge if data acquisition running as a non-stop service. 
+under streaming regime, the real-time data provide profit if ML system can extract information from them.
+
+## Online Machine Learning
+
+Let ML model training processing ingress real-time event data, the system can be design in different architecture. Instead of loading whole dataset into main memory at the same time. Model can ingress row-level data, so called, Event. Caching by specific designed Model data structure, integral statistics for model training control by `Hoeffding Inequality` to make sure statistics at time T is enough to go through one model training process. After that, those event data observation can be removed from memory and no need to keep them from the disk, the strategy called `one-pass learning`.
 
 ## The Model
 The core model is running the _**Hoeffding Tree**_, which can take [Mining High-Speed Data Streams](https://homes.cs.washington.edu/~pedrod/papers/kdd00.pdf) as reference. To put it in a nutshell, It is a tree based model and applies _**Hoeffding Inequality**_ while processing streaming data. The properties of streaming data: 
