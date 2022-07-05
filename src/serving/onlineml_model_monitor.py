@@ -230,16 +230,21 @@ class ModelPerformanceMonitor:
         def update_acc_trend_live(n):
             x_list = self._online_ml_server.get_x_axis()
             y_list = self._online_ml_server.get_accuracy()
+            y_batch_list = self._online_ml_server.get_batch_acc()
             fig_acc = go.Figure()
             fig_acc.add_trace(go.Scatter(
                 x=x_list, y=y_list, name='Accuracy',
                 line=dict(color='firebrick', width=4)
             ))
+            fig_acc.add_trace(go.Scatter(
+                x=x_list, y=y_batch_list, name='Batch Accuracy',
+                line=dict(color='#545454', width=4, dash='dash')
+            ))
             fig_acc.update_layout(
                 title='Accuracy Trend Plot',
                 xaxis_title='Iteration(s)',
                 yaxis_title='Accuracy',
-                yaxis_range=[0, 1]
+                yaxis_range=[0.5, 1]
             )
             return fig_acc
 
@@ -248,16 +253,21 @@ class ModelPerformanceMonitor:
         def update_f1_trend_live(n):
             x_list = self._online_ml_server.get_x_axis()
             y_list = self._online_ml_server.get_f1_score()
+            y_batch_list = self._online_ml_server.get_batch_f1()
             fig_f1 = go.Figure()
             fig_f1.add_trace(go.Scatter(
                 x=x_list, y=y_list, name='f1-score',
                 line=dict(color='blue', width=4)
             ))
+            fig_f1.add_trace(go.Scatter(
+                x=x_list, y=y_batch_list, name='Batch f1-score',
+                line=dict(color='#545454', width=4, dash='dash')
+            ))
             fig_f1.update_layout(
                 title='f1 scores Trend Plot',
                 xaxis_title='Iteration(s)',
-                yaxis_title='Accuracy',
-                yaxis_range=[0, 1]
+                yaxis_title='f1 Score',
+                yaxis_range=[0.5, 1]
             )
             return fig_f1
 

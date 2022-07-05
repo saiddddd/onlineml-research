@@ -331,7 +331,7 @@ class OnlineMachineTrainerRunner:
 
     def start_online_ml_server(self):
         print("start online machine learning server")
-        self._future = self._pool.submit(self.__server.run, consumer_run_mode='iteration', label_name='LABEL')
+        self._future = self._pool.submit(self.__server.run, consumer_run_mode='polling', label_name='Y')
 
     def start_persist_model(self):
         self._future = self._pool.submit(self.__server.run_model_persist)

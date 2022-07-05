@@ -9,6 +9,7 @@ import numpy as np
 from pandas import json_normalize
 import json
 
+from sklearn.ensemble import RandomForestClassifier
 # Model validation related
 from sklearn.metrics import recall_score, accuracy_score, f1_score
 # Metrics render via web page
@@ -78,12 +79,26 @@ class OnlineMachineLearningModelServing:
         self.app = Flask(__name__)
 
         self.__model = None
+        self.__batch_model = RandomForestClassifier(
+            n_estimators=10,
+            criterion='gini',
+            verbose=1
+        )
+        # df_batch_train = pd.read_csv("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
+        # df_batch_train.drop(['Date', 'DailyReturn'], axis=1, inplace=True)
+        df_batch_train = pd.read_csv("../../playground/quick_study/dummy_toy/dummy_data_training.csv")
+        y = df_batch_train.pop('Y')
+        self.__batch_model.fit(df_batch_train, y)
 
         # variable for metrics display
         self.__x_axis = []
         self.__appending_acc = []
         self.__appending_recall = []
         self.__appending_f1 = []
+
+        # variable for metrics display
+        self.__batch_appending_acc = []
+        self.__batch_appending_f1 = []
 
         # last prediction probability result and target answer
         self.__last_pred_proba = None
@@ -172,6 +187,20 @@ class OnlineMachineLearningModelServing:
 
                 print("Accuracy: {}\n recall-rate: {}\n f1 score: {}\n".format(acc, recall, f1))
 
+                try:
+                    df.drop(["Date", "DailyReturn"], axis=1, inplace=True)
+                except:
+                    pass
+                batch_model_predict = self.__batch_model.predict(df)
+                batch_acc = accuracy_score(y, batch_model_predict)
+                batch_f1 = f1_score(y, batch_model_predict)
+                self.__batch_appending_acc.append(batch_acc)
+                self.__batch_appending_f1.append(batch_f1)
+
+                print("batch model prediction Accuracy: {}\n f1 score: {}\n".format(batch_acc, batch_f1))
+
+
+
                 return Response(
                     json.dumps(
                         {"accuracy": acc, "recall-rate": recall, "f1 score": f1}
@@ -233,6 +262,12 @@ class OnlineMachineLearningModelServing:
 
     def get_f1_score(self):
         return self.__appending_f1
+
+    def get_batch_acc(self):
+        return self.__batch_appending_acc
+
+    def get_batch_f1(self):
+        return self.__batch_appending_f1
 
     def get_recall_rate(self):
         return self.__appending_recall
