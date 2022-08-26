@@ -71,6 +71,11 @@ class DataLoader(ABC):
             if self._op_df[col].dtype == 'object':
                 self._op_df[col] = LabelEncoder().fit_transform(self._op_df[col])
 
+    def cast_column_type(self, columns: list, go_to_cast: str):
+
+        for col in columns:
+            self._op_df[col] = self._op_df[col].astype(go_to_cast)
+
     def do_one_hot_encoding_by_col(self, col_name: str):
         """
         To do one-hot encoding on specific column, inplace operation
