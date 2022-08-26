@@ -83,3 +83,11 @@ for example, to estimate population annual income in Taiwan, that distribution i
 
 ![image](https://i.imgur.com/6Obf1WX.gif)
 
+
+# Online Machine Learning Services Demo
+
+The demonstration of Online Machine Learning Services using Kafka sending dummy data.
+The Three basic components working together to do model training / model serving and / model performance monitoring.
+
+![image](https://i.imgur.com/DDHPets.gif)
+
