@@ -91,3 +91,23 @@ The Three basic components working together to do model training / model serving
 
 ![image](https://i.imgur.com/DDHPets.gif)
 
+The Online Machine services architecture can gracefully separate into three components.
+1. Model Training Core Part
+2. Model Serving 
+3. Model Performance Monitoring UI.
+
+![image](https://i.imgur.com/AXH9l11.png)
+
+Here the Model Training Core Part is singleton, due to the Online Model Training can not run in parallel (or said that horizontal scale out).
+The Model training online will be flush to model store periodically and share to serving port.
+The Model Serving Part support the horizontal scale out. The Model Serving Part is build by Flask backend. The model inference and validation api is implemented.
+The Model Performance Monitoring UI is build by `Dash`, and support Plotly data visualization.
+
+
+The following experiment only support Kafka Data inbound.
+(Support the application is the down-stream from Kafka Data Streaming)
+
+![image](https://i.imgur.com/5eCghDy.png)
+
+
+
