@@ -7,7 +7,15 @@ class HoeffdingEnsembleTreeInspector:
 
         self.__model = model
 
-    def draw_tree(self, tree_index, output_fig_dir, fig_file_name=''):
+    def update_model(self, model):
+        """
+        updated inspector's model by provided
+        :param model:
+        :return:
+        """
+        self.__model = model
+
+    def draw_tree(self, tree_index=0, output_fig_dir='', fig_file_name=''):
         trees = self.__model.models
         timestamp = time.time()
 

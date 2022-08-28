@@ -4,15 +4,11 @@ import time
 import json
 import pickle
 import requests
-from concurrent import futures
 from datetime import datetime
 
 import pandas as pd
 
 from kafka import KafkaConsumer
-
-from river import ensemble
-from river import tree
 
 from concurrent import futures
 
@@ -29,6 +25,8 @@ class OnlineMachineLearningServer:
         self.__kafka_consumer = None
         self.__model = None
         self.__trained_event_counter = 0
+
+        self._tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
 
         self._init_kafka_consumer(
             connection_try_times=3
@@ -132,8 +130,8 @@ class OnlineMachineLearningServer:
         ''' load model from pickle if pre-train model exist '''
         ''' model structure inspect, saving figure. '''
         # TODO refactor the model structure inspection function
-        tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
-        tree_inspector.draw_tree(None,
+        self._tree_inspector.update_model(self.__model)
+        self._tree_inspector.draw_tree(None,
                                  "../../output_plot/web_checker_online_display/online_tree_inspection/",
                                  "current_tree_structure")
 
@@ -173,6 +171,10 @@ class OnlineMachineLearningServer:
                 e.with_traceback()
                 print("Model Persisting Error, can not save model into file {}. Please check!".format(model_persist_file))
 
+    def tree_inspect_and_dump(self, *args, **kwargs):
+
+        self._tree_inspector.update_model(self.__model)
+        self._tree_inspector.draw_tree(**kwargs)
 
     def train_model_by_one_row(self, receive_data: pd.Series, label_name: str):
         """
@@ -315,20 +317,22 @@ class OnlineMachineLearningServer:
                         save_file_path=self.model_store_dir,
                         save_file_name=self.model_persist_file
                     )
-                    tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
-                    # tree_inspector.draw_tree(0, '../../output_plot/tree_inspect/')
 
+                    tree_inspect_params = {
+                        'tree_index': None,
+                        'output_fig_dir': '../../output_plot/web_checker_online_display/online_tree_inspection/',
+                        'fig_file_name': 'current_tree_structure'
+                    }
+                    self.tree_inspect_and_dump(**tree_inspect_params)
 
-                    # updating current tree structure to /output_plot/web_checker_historical_check
-                    # for checker inspection
-                    # tree_inspector.draw_tree(0, '../../output_plot/web_checker_historical_check/', 'current_tree_structure')
-                    tree_inspector.draw_tree(None,
-                                             "../../output_plot/web_checker_online_display/online_tree_inspection/",
-                                             "current_tree_structure")
                     timestamp = datetime.now().strftime('%y-%m-%d-%H-%M-%S')
-                    tree_inspector.draw_tree(0,
-                                             "../../output_plot/web_checker_historical_check/tree_inspection/",
-                                             "{}_tree_structure".format(timestamp))
+                    tree_inspect_params = {
+                        'tree_index': 0,
+                        'output_fig_dir': '../../output_plot/web_checker_historical_check/tree_inspection/',
+                        'fig_file_name': '{}_tree_structure'.format(timestamp)
+                    }
+                    self.tree_inspect_and_dump(**tree_inspect_params)
+
                     time.sleep(3)
                     try:
                         send_signal_load_model("http://127.0.0.1:5000/model/")
