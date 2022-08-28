@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, mean_absolute_error
 from tqdm import tqdm
 
 from tools.data_loader import GeneralDataLoader
-
+from tools.evaluator import MeanAbsoluteErrorEvaluator
 
 class Model:
 
@@ -51,7 +51,7 @@ class Model:
 
 class RiverHoeffdingTreeClassifier(Model):
 
-    def __init__(self, model_name, params):
+    def __init__(self, model_name, **params):
         super().__init__(model_name=model_name)
 
         self._model = ensemble.AdaBoostClassifier(
@@ -92,14 +92,11 @@ class RiverHoeffdingTreeClassifier(Model):
 
 class RiverHoeffdingTreeRegressor(Model):
 
-    def __init__(self, model_name, params):
+    def __init__(self, model_name, **params):
         super().__init__(model_name=model_name)
 
         self._model = tree.HoeffdingAdaptiveTreeRegressor(
-            grace_period=50,
-            leaf_prediction='adaptive',
-            model_selector_decay=0.3,
-            seed=0
+            **params
         )
 
     def fit(self, x, y):
@@ -117,39 +114,34 @@ class RiverHoeffdingTreeRegressor(Model):
 
     def validate_mae(self, x, y):
         tot_pred = self.inference(x)
-        mae = mean_absolute_error(y, tot_pred)
+        mae = MeanAbsoluteErrorEvaluator(y, tot_pred).get_evaluation()
 
         return mae
 
 
 if __name__ == "__main__":
 
-
-    model_hyper_params = {
-        'max_depth': 3,
-        'split_criterion': 'gini',
-        'split_confidence': 1e-2,
-        'grace_period': 10,
-        'seed': 0
-    }
-
     # model = RiverHoeffdingTreeClassifier(model_name="HoeffdingTreeClassifier", params=model_hyper_params)
-    model = RiverHoeffdingTreeRegressor(model_name="HoeffdingTreeClassifier", params=model_hyper_params)
-
-    dataloader = GeneralDataLoader("../../data/wind-farm/windfarm_data.csv")
     # dataloader = GeneralDataLoader("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
     # dataloader.drop_feature('Adj Close')
     # dataloader.drop_feature('DailyReturn')
+
+    model_hyper_params = {
+        'grace_period': 50,
+        'leaf_prediction': 'adaptive',
+        'model_selector_decay': 0.3,
+        'seed': 0
+    }
+
+    model = RiverHoeffdingTreeRegressor(model_name="HoeffdingTreeRegressor", **model_hyper_params)
+    dataloader = GeneralDataLoader("../../data/wind-farm/windfarm_data.csv")
     df = dataloader.get_full_df()
 
-    # df = pd.read_csv("../../data/wind-farm/windfarm_data.csv", index_col='date')
-    # print(df)
-
+    # DataFrame Type Casting
     for column in df.columns:
         df[column] = df[column].astype(float)
 
     y = df.pop('power')
-    # df.drop(['date'])
 
     model.fit(df, y)
 
@@ -157,3 +149,27 @@ if __name__ == "__main__":
 
 
     print(mae)
+
+# def kwargs_fun(a=0, b=0, c=0):
+#
+#     print(a, b, c)
+#
+#
+# def run_func(*args, **kwargs):
+#
+#     kwargs_fun(**kwargs)
+#
+#
+# if __name__ == "__main__":
+#
+#     param = {
+#         'a': 1,
+#         'b': 2,
+#         'c': 3
+#     }
+#
+#     run_func(**param)
+#     # kwargs_fun(**param)
+
+
+
