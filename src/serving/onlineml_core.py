@@ -23,6 +23,8 @@ class OnlineMachineLearningServer:
 
     def __init__(self):
         self.__server_status = None
+        self.__model_store_dir = None
+        self.__model_persist_file = None
         self.__model_persisting_process_status = None
         self.__kafka_consumer = None
         self.__model = None
@@ -31,9 +33,14 @@ class OnlineMachineLearningServer:
         self._init_kafka_consumer(
             connection_try_times=3
         )
-        self._init_model('../../model_store/pretrain_model_persist/')
+        # self._init_model('../../model_store/pretrain_model_persist/', 'testing_hoeffding_tree_pretrain_model.pickle')
+        self.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
 
     @property
+    def server_status(self):
+        return self.__server_status
+
+    @server_status.getter
     def server_status(self):
         return self.__server_status
 
@@ -45,6 +52,29 @@ class OnlineMachineLearningServer:
             self.__server_status = 'unknown'
             print("Status {} is not design in the server, set status as unknown".format(status))
 
+    @property
+    def model_store_dir(self):
+        return self.__model_store_dir
+
+    @model_store_dir.setter
+    def model_store_dir(self, store: str):
+        self.__model_store_dir = store
+
+    @model_store_dir.getter
+    def model_store_dir(self):
+        return self.__model_store_dir
+
+    @property
+    def model_persist_file(self):
+        return self.__model_persist_file
+
+    @model_persist_file.setter
+    def model_persist_file(self, file_name: str):
+        self.__model_persist_file = file_name
+
+    @model_persist_file.getter
+    def model_persist_file(self):
+        return self.__model_persist_file
 
     @property
     def model_persisting_process_status(self):
@@ -58,6 +88,8 @@ class OnlineMachineLearningServer:
             self.__model_persisting_process_status = 'unknown'
             print("Status {} is not design in the server, set statis as unknown".format(status))
 
+
+
     def _init_kafka_consumer(self, connection_try_times=3):
         """
         initializing of kafka consumer
@@ -69,58 +101,54 @@ class OnlineMachineLearningServer:
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
         )
 
-    def _init_model(self, load_model_dir: str):
+    def load_model(self, load_model_path: str):
+        """
+        from provided dir to load exist model
+        :param load_model_path:
+        :return:
+        """
+
+        if os.path.isfile(load_model_path):
+            print("checking {} is exist file".format(load_model_path))
+            try:
+                with open(load_model_path, 'rb') as f:
+                    self.__model = pickle.load(f)
+                    print('load exist model {} successfully.'.format(load_model_path))
+
+                    """ model structure inspect, saving figure. """
+
+            except FileNotFoundError:
+                print("File not found! please check dir {} and pickle exist".format(load_model_path))
+
+
+    def init_model(self, model: object):
         """
         initializing of model
         :return:
         """
+        self.__model = model
+
 
         ''' load model from pickle if pre-train model exist '''
-        if os.path.isdir(load_model_dir):
-            print("checking {} for pre-train model".format(load_model_dir))
-            try:
-                pretrain_model_path = load_model_dir+'testing_hoeffding_tree_pretrain_model.pickle'
-                with open(pretrain_model_path, 'rb') as f:
-                    self.__model = pickle.load(f)
-                    print('load pre-train model for {} successfully.'.format(pretrain_model_path))
+        ''' model structure inspect, saving figure. '''
+        # TODO refactor the model structure inspection function
+        tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
+        tree_inspector.draw_tree(None,
+                                 "../../output_plot/web_checker_online_display/online_tree_inspection/",
+                                 "current_tree_structure")
 
-                    ''' model structure inspect, saving figure. '''
-                    tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
-                    tree_inspector.draw_tree(None,
-                                             "../../output_plot/web_checker_online_display/online_tree_inspection/",
-                                             "current_tree_structure")
-
-                    ''' notify serving part to load model'''
-                    try:
-                        response = requests.post(
-                            "http://127.0.0.1:5000/model/",
-                            data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
-                            headers={'content-type': 'application/json'}
-                        )
-                    except:
-                        print("Can not send signal to serving part for load model api")
-
-            except FileNotFoundError:
-                print("File not found! please check dir {} and pickle exist".format(load_model_dir))
-
-
-        if self.__model is None:
-            '''  In the case that pre-train model not found. initialized model. '''
-
-            print('pretrain model file not found! initialize a new model')
-            self.__model = ensemble.AdaBoostClassifier(
-                model=(
-                    tree.HoeffdingAdaptiveTreeClassifier(
-                        max_depth=3,
-                        split_criterion='gini',
-                        split_confidence=1e-2,
-                        grace_period=10,
-                        seed=0
-                    )
-                ),
-                n_models=10,
-                seed=42
+        ''' notify serving part to load model'''
+        # TODO implement model path sending function in other place
+        try:
+            response = requests.post(
+                "http://127.0.0.1:5000/model/",
+                # data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
+                data='{"model_path":"{}"}'.format(''),
+                headers={'content-type': 'application/json'}
             )
+        except:
+            print("Can not send signal to serving part for load model api")
+
 
     def _save_model(self, save_file_path='', save_file_name=''):
 
@@ -195,14 +223,14 @@ class OnlineMachineLearningServer:
 
 
     def stop(self):
-        self.__server_status = 'stopped'
+        self.server_status = 'stopped'
 
 
     def run(self, consumer_run_mode='', label_name=''):
 
         print("running mode: {}; {}".format(consumer_run_mode, label_name))
 
-        self.__server_status = 'running'
+        self.server_status = 'running'
 
         # To be configable in the future
         # MODE == iterating OR polling
@@ -213,7 +241,7 @@ class OnlineMachineLearningServer:
             '''following block using polling method to do data extraction
             '''
             print("going to consumer kafka consumer in polling mode")
-            while self.__server_status == 'running':
+            while self.server_status == 'running':
                 data_polling_result = self.__kafka_consumer.poll(
                     timeout_ms=1000,
                     max_records=None,
@@ -275,7 +303,7 @@ class OnlineMachineLearningServer:
                     headers={'content-type': 'application/json'}
                 )
 
-        while self.__server_status == 'running':
+        while self.server_status == 'running':
 
             time.sleep(1)
             print("going to persist model. status:{}".format(self.__model_persisting_process_status))
@@ -284,8 +312,8 @@ class OnlineMachineLearningServer:
             if self.__model is not None and self.__model_persisting_process_status == 'flushing':
                 try:
                     self._save_model(
-                        save_file_path="../../model_store",
-                        save_file_name="testing_hoeffding_tree.pickle"
+                        save_file_path=self.model_store_dir,
+                        save_file_name=self.model_persist_file
                     )
                     tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
                     # tree_inspector.draw_tree(0, '../../output_plot/tree_inspect/')
@@ -324,6 +352,8 @@ class OnlineMachineTrainerRunner:
 
         print("Initialization of Online Machine Learning Service.")
         self.__server = OnlineMachineLearningServer()
+        self.__server.model_store_dir = "../../model_store"
+        self.__server.model_persist_file = "testing_hoeffding_tree.pickle"
         print("Online Machine Learning Service created.")
 
         self._pool = futures.ThreadPoolExecutor(2)
