@@ -12,8 +12,11 @@ from kafka import KafkaConsumer
 
 from concurrent import futures
 
-from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
+from river import tree
+from river import ensemble
 
+from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
+from tools.model import RiverClassifier, Model
 
 class OnlineMachineLearningServer:
 
@@ -32,7 +35,7 @@ class OnlineMachineLearningServer:
             connection_try_times=3
         )
         # self._init_model('../../model_store/pretrain_model_persist/', 'testing_hoeffding_tree_pretrain_model.pickle')
-        self.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
+        # self.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
 
     @property
     def server_status(self):
@@ -119,33 +122,48 @@ class OnlineMachineLearningServer:
                 print("File not found! please check dir {} and pickle exist".format(load_model_path))
 
 
-    def init_model(self, model: object):
+    def init_model(self, model: Model):
         """
         initializing of model
         :return:
         """
         self.__model = model
 
+        self.wrap_model()
+
 
         ''' load model from pickle if pre-train model exist '''
         ''' model structure inspect, saving figure. '''
-        # TODO refactor the model structure inspection function
-        self._tree_inspector.update_model(self.__model)
-        self._tree_inspector.draw_tree(None,
-                                 "../../output_plot/web_checker_online_display/online_tree_inspection/",
-                                 "current_tree_structure")
+        # # TODO refactor the model structure inspection function
+        # self._tree_inspector.update_model(self.__model.get_model())
+        # self._tree_inspector.draw_tree(None,
+        #                          "../../output_plot/web_checker_online_display/online_tree_inspection/",
+        #                          "current_tree_structure")
+        #
+        # ''' notify serving part to load model'''
+        # # TODO implement model path sending function in other place
+        # try:
+        #     response = requests.post(
+        #         "http://127.0.0.1:5000/model/",
+        #         # data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
+        #         data='{"model_path":"{}"}'.format(''),
+        #         headers={'content-type': 'application/json'}
+        #     )
+        # except:
+        #     print("Can not send signal to serving part for load model api")
 
-        ''' notify serving part to load model'''
-        # TODO implement model path sending function in other place
-        try:
-            response = requests.post(
-                "http://127.0.0.1:5000/model/",
-                # data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
-                data='{"model_path":"{}"}'.format(''),
-                headers={'content-type': 'application/json'}
-            )
-        except:
-            print("Can not send signal to serving part for load model api")
+
+    def wrap_model(self):
+        model_wrap_params = {
+            'n_models': 100
+        }
+
+        self.__model = self.__model.model_wrap(
+            model_encapsulate=ensemble.AdaBoostClassifier,
+            model_hyper_params=model_wrap_params
+        )
+
+        # self.__model = self.__model.get_model()
 
 
     def _save_model(self, save_file_path='', save_file_name=''):
@@ -190,19 +208,19 @@ class OnlineMachineLearningServer:
         '''
         start_time = time.time()
         try:
-            self.__model.learn_one(row, y)
+            self.__model.fit_one(row, y)
         except Exception as e:
             print(traceback.format_exc())
         end_time = time.time()
 
         self.__trained_event_counter += 1
 
-        print(
-            '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
-                self.__trained_event_counter, (end_time - start_time) * 1000),
-            end='',
-            flush=True
-        )
+        # print(
+        #     '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
+        #         self.__trained_event_counter, (end_time - start_time) * 1000),
+        #     end='',
+        #     flush=True
+        # )
 
     def train_model_by_one_polling_batch(self, polling_batch_data, label_name):
         """
@@ -243,15 +261,27 @@ class OnlineMachineLearningServer:
             '''following block using polling method to do data extraction
             '''
             print("going to consumer kafka consumer in polling mode")
-            while self.server_status == 'running':
-                data_polling_result = self.__kafka_consumer.poll(
-                    timeout_ms=1000,
-                    max_records=None,
-                    update_offsets=True
-                )
-                for key, value in data_polling_result.items():
-                    self.train_model_by_one_polling_batch(value, LABEL_NAME)
-                time.sleep(1)
+            try:
+                while self.server_status == 'running':
+                    data_polling_result = self.__kafka_consumer.poll(
+                        timeout_ms=1000,
+                        max_records=None,
+                        update_offsets=True
+                    )
+                    for key, value in data_polling_result.items():
+
+                        self.train_model_by_one_polling_batch(value, LABEL_NAME)
+
+                        # for record in value:
+                        #     rows = pd.Series(record.value)
+                        #     y = rows.pop(LABEL_NAME)
+                        #     self.__model.fit(rows, y)
+
+                    time.sleep(1)
+            except:
+                print("Unexpect Error Happen while running model training")
+                self.stop()
+                traceback.print_exc()
 
         elif CONSUMER_RUN_MODE == 'iteration':
             ''' following block using iteration method to run new event from consumer
@@ -336,6 +366,7 @@ class OnlineMachineLearningServer:
                     time.sleep(3)
                     try:
                         send_signal_load_model("http://127.0.0.1:5000/model/")
+                        print("\nSend load model request to model server")
                     except:
                         print("Can not send signal to serving part for load model api")
                     self.__model_persisting_process_status = 'idle'
@@ -343,6 +374,7 @@ class OnlineMachineLearningServer:
                     print("Folder to persist model not found QQ! {}".format(os.getcwd()))
                 except Exception:
                     print("An Unexpected Error happen in model persist thread!")
+                    traceback.print_exc()
 
             elif self.__model_persisting_process_status == 'idle':
                 print('Model is not been updated, persist process in idle status')
@@ -374,11 +406,28 @@ class OnlineMachineTrainerRunner:
         print("stop online machine learning server")
         self.__server.stop()
 
+    def load_model(self, load_model_path: str):
+        self.__server.load_model(load_model_path=load_model_path)
+
+    def init_model(self, model):
+        self.__server.init_model(model)
 
 
 
 if __name__ == "__main__":
     runner = OnlineMachineTrainerRunner()
+    # runner.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
+
+    # setting up model
+    model_hyper_params = {
+        'max_depth': 3,
+        'split_criterion': 'gini',
+        'split_confidence': 1e-2,
+        'grace_period': 10,
+        'seed': 0
+    }
+
+    runner.init_model(RiverClassifier(model_class=tree.HoeffdingAdaptiveTreeClassifier, model_hyper_params=model_hyper_params))
     runner.start_online_ml_server()
     runner.start_persist_model()
     # time.sleep(1000)
