@@ -13,6 +13,7 @@ from tools.evaluator import MeanAbsoluteErrorEvaluator
 
 import time
 
+
 class Model:
 
     def __init__(self, model_class=None, model_hyper_params=None):
@@ -30,9 +31,12 @@ class Model:
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
     def fit(self, x, y):
-        # self._model_version += 1
-        # self._model_model_timestamp = self.get_timestamp_now()
-
+        """
+        fit function should be implemented by concrete class based on corresponding process logic
+        :param x:
+        :param y:
+        :return:
+        """
         raise NotImplementedError
 
 
@@ -43,41 +47,24 @@ class Model:
 class RiverClassifier(Model):
 
     def __init__(self, model_class, **model_hyper_params):
+
+        """
+        passing River Classifier `Model` class by creator together with corresponding hyperparameters.
+
+        :param model_class:
+        :param model_hyper_params:
+        """
+
         super().__init__(model_class=model_class, **model_hyper_params)
 
-        # self._model = ensemble.AdaBoostClassifier(
-        #     model=(
-        #         tree.HoeffdingAdaptiveTreeClassifier(
-        #             max_depth=3,
-        #             split_criterion='gini',
-        #             split_confidence=1e-2,
-        #             grace_period=10,
-        #             seed=0
-        #         )
-        #     ),
-        #     n_models=10,
-        #     seed=42
-        # )
+        self._ensembler = None
 
-    def model_wrap(self, model_encapsulate, model_hyper_params):
+    def ensemble_model(self, model_encapsulate, model_hyper_params):
 
         self._model = model_encapsulate(
             model=(self._model),
             **model_hyper_params
         )
-        # self._model = ensemble.AdaBoostClassifier(
-        #     model=(
-        #         tree.HoeffdingAdaptiveTreeClassifier(
-        #             max_depth=3,
-        #             split_criterion='gini',
-        #             split_confidence=1e-2,
-        #             grace_period=10,
-        #             seed=0
-        #         )
-        #     ),
-        #     n_models=10,
-        #     seed=42
-        # )
 
         return self
 
@@ -92,7 +79,6 @@ class RiverClassifier(Model):
     def fit_one(self, x, y):
         time_start = time.time()
         self._model.learn_one(x, y)
-        print(hex(id(self._model)))
         time_end = time.time()
 
         print(
@@ -189,13 +175,10 @@ if __name__ == "__main__":
     model = RiverClassifier(model_class=tree.HoeffdingAdaptiveTreeClassifier, model_hyper_params=model_hyper_params)
 
     model_wrap_params = {
-        'n_models': 100
+        'n_models': 10
     }
 
-    model.model_wrap(
-        model_encapsulate=ensemble.AdaBoostClassifier,
-        model_hyper_params=model_wrap_params
-    )
+    model.ensemble_model(model_encapsulate=ensemble.AdaBoostClassifier, model_hyper_params=model_wrap_params)
 
     dataloader = GeneralDataLoader("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
     dataloader.drop_feature('Adj Close')

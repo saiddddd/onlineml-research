@@ -129,9 +129,6 @@ class OnlineMachineLearningServer:
         """
         self.__model = model
 
-        self.wrap_model()
-
-
         ''' load model from pickle if pre-train model exist '''
         ''' model structure inspect, saving figure. '''
         # # TODO refactor the model structure inspection function
@@ -153,17 +150,10 @@ class OnlineMachineLearningServer:
         #     print("Can not send signal to serving part for load model api")
 
 
-    def wrap_model(self):
-        model_wrap_params = {
-            'n_models': 100
-        }
+    def ensemble_model(self, ensemble_model_params):
 
-        self.__model = self.__model.model_wrap(
-            model_encapsulate=ensemble.AdaBoostClassifier,
-            model_hyper_params=model_wrap_params
-        )
-
-        # self.__model = self.__model.get_model()
+        self.__model = self.__model.ensemble_model(model_encapsulate=ensemble.AdaBoostClassifier,
+                                                   model_hyper_params=ensemble_model_params)
 
 
     def _save_model(self, save_file_path='', save_file_name=''):
@@ -208,19 +198,19 @@ class OnlineMachineLearningServer:
         '''
         start_time = time.time()
         try:
-            self.__model.fit_one(row, y)
+            self.__model.fit(row, y)
         except Exception as e:
             print(traceback.format_exc())
         end_time = time.time()
 
         self.__trained_event_counter += 1
 
-        # print(
-        #     '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
-        #         self.__trained_event_counter, (end_time - start_time) * 1000),
-        #     end='',
-        #     flush=True
-        # )
+        print(
+            '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
+                self.__trained_event_counter, (end_time - start_time) * 1000),
+            end='',
+            flush=True
+        )
 
     def train_model_by_one_polling_batch(self, polling_batch_data, label_name):
         """
@@ -412,6 +402,9 @@ class OnlineMachineTrainerRunner:
     def init_model(self, model):
         self.__server.init_model(model)
 
+    def ensemble_model(self, params):
+        self.__server.ensemble_model(params)
+
 
 
 if __name__ == "__main__":
@@ -427,7 +420,12 @@ if __name__ == "__main__":
         'seed': 0
     }
 
+    ensemble_model_params = {
+        'n_models': 100
+    }
+
     runner.init_model(RiverClassifier(model_class=tree.HoeffdingAdaptiveTreeClassifier, model_hyper_params=model_hyper_params))
+    runner.ensemble_model(ensemble_model_params)
     runner.start_online_ml_server()
     runner.start_persist_model()
     # time.sleep(1000)
