@@ -1,5 +1,6 @@
 from datetime import datetime
 import pandas as pd
+import traceback
 
 from river import ensemble
 from river import tree
@@ -57,8 +58,6 @@ class RiverClassifier(Model):
 
         super().__init__(model_class=model_class, **model_hyper_params)
 
-        self._ensembler = None
-
     def ensemble_model(self, model_encapsulate, model_hyper_params):
 
         self._model = model_encapsulate(
@@ -72,21 +71,26 @@ class RiverClassifier(Model):
 
         if isinstance(x, pd.DataFrame):
             for index, row in tqdm(x.iterrows(), total=x.shape[0]):
-                self._model.learn_one(row, y[index])
+
+                try:
+                    self._model.learn_one(row, y[index])
+                except Exception as e:
+                    print(traceback.format_exc())
+
         elif isinstance(x, pd.Series):
             self._model.learn_one(x, y)
 
-    def fit_one(self, x, y):
-        time_start = time.time()
-        self._model.learn_one(x, y)
-        time_end = time.time()
-
-        print(
-            '\r Events Trained, learn_one time spend:{} milliseconds'.format(
-                (time_end - time_start) * 1000),
-            end='',
-            flush=True
-        )
+    # def fit_one(self, x, y):
+    #     time_start = time.time()
+    #     self._model.learn_one(x, y)
+    #     time_end = time.time()
+    #
+    #     print(
+    #         '\r Events Trained, learn_one time spend:{} milliseconds'.format(
+    #             (time_end - time_start) * 1000),
+    #         end='',
+    #         flush=True
+    #     )
 
 
     def inference(self, x):
@@ -133,19 +137,19 @@ class RiverClassifier(Model):
         return acc
 
 
-class RiverHoeffdingTreeRegressor(Model):
+class RiverRegressor(Model):
 
-    def __init__(self, model_name, **params):
-        super().__init__(model_name=model_name)
+    def __init__(self, model_class, **model_hyper_params):
+        super().__init__(model_class=model_class, **model_hyper_params)
 
-        self._model = tree.HoeffdingAdaptiveTreeRegressor(
-            **params
-        )
 
     def fit(self, x, y):
 
-        for index, row in tqdm(x.iterrows(), total=x.shape[0]):
-            self._model.learn_one(row.to_dict(), y[index])
+        if isinstance(x, pd.DataFrame):
+            for index, row in tqdm(x.iterrows(), total=x.shape[0]):
+                self._model.learn_one(row, y[index])
+        elif isinstance(x, pd.Series):
+            self._model.learn_one(x, y)
 
     def inference(self, x):
 
@@ -191,7 +195,7 @@ if __name__ == "__main__":
     #     'seed': 0
     # }
     #
-    # model = RiverHoeffdingTreeRegressor(model_name="HoeffdingTreeRegressor", **model_hyper_params)
+    # model = RiverRegressor(model_name="HoeffdingTreeRegressor", **model_hyper_params)
     # dataloader = GeneralDataLoader("../../data/wind-farm/windfarm_data.csv")
     df = dataloader.get_full_df()
 

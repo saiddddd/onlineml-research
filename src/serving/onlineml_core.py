@@ -16,7 +16,8 @@ from river import tree
 from river import ensemble
 
 from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
-from tools.model import RiverClassifier, Model
+from tools.model import RiverClassifier, RiverRegressor, Model
+
 
 class OnlineMachineLearningServer:
 
@@ -34,8 +35,6 @@ class OnlineMachineLearningServer:
         self._init_kafka_consumer(
             connection_try_times=3
         )
-        # self._init_model('../../model_store/pretrain_model_persist/', 'testing_hoeffding_tree_pretrain_model.pickle')
-        # self.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
 
     @property
     def server_status(self):
@@ -131,23 +130,6 @@ class OnlineMachineLearningServer:
 
         ''' load model from pickle if pre-train model exist '''
         ''' model structure inspect, saving figure. '''
-        # # TODO refactor the model structure inspection function
-        # self._tree_inspector.update_model(self.__model.get_model())
-        # self._tree_inspector.draw_tree(None,
-        #                          "../../output_plot/web_checker_online_display/online_tree_inspection/",
-        #                          "current_tree_structure")
-        #
-        # ''' notify serving part to load model'''
-        # # TODO implement model path sending function in other place
-        # try:
-        #     response = requests.post(
-        #         "http://127.0.0.1:5000/model/",
-        #         # data='{"model_path":"../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle"}',
-        #         data='{"model_path":"{}"}'.format(''),
-        #         headers={'content-type': 'application/json'}
-        #     )
-        # except:
-        #     print("Can not send signal to serving part for load model api")
 
 
     def ensemble_model(self, ensemble_model_params):
@@ -184,33 +166,6 @@ class OnlineMachineLearningServer:
         self._tree_inspector.update_model(self.__model)
         self._tree_inspector.draw_tree(**kwargs)
 
-    def train_model_by_one_row(self, receive_data: pd.Series, label_name: str):
-        """
-        Passing row level data from polling block to do model training by line
-        :param receive_data: passing row level data (1 row)
-        :param label_name: label name to pop
-        :return:
-        """
-        row = pd.Series(receive_data)
-        y = row.pop(label_name)
-
-        '''model training => learn one
-        '''
-        start_time = time.time()
-        try:
-            self.__model.fit(row, y)
-        except Exception as e:
-            print(traceback.format_exc())
-        end_time = time.time()
-
-        self.__trained_event_counter += 1
-
-        print(
-            '\r #{} Events Trained, learn_one time spend:{} milliseconds'.format(
-                self.__trained_event_counter, (end_time - start_time) * 1000),
-            end='',
-            flush=True
-        )
 
     def train_model_by_one_polling_batch(self, polling_batch_data, label_name):
         """
@@ -225,7 +180,14 @@ class OnlineMachineLearningServer:
             '''Row level data extraction
             '''
             receive_data = record.value
-            self.train_model_by_one_row(receive_data, label_name=label_name)
+            df = pd.DataFrame.from_dict(receive_data)
+
+            print(df.dtypes)
+
+            y = df.pop(label_name)
+
+            print("going to fit by Model internally defined iteration and learn by one row")
+            self.__model.fit(df, y)
 
         # Model has been updated
         self.__model_persisting_process_status = 'flushing'
@@ -236,7 +198,7 @@ class OnlineMachineLearningServer:
         self.server_status = 'stopped'
 
 
-    def run(self, consumer_run_mode='', label_name=''):
+    def run(self, consumer_run_mode='', label_name='LABEL'):
 
         print("running mode: {}; {}".format(consumer_run_mode, label_name))
 
@@ -262,11 +224,6 @@ class OnlineMachineLearningServer:
 
                         self.train_model_by_one_polling_batch(value, LABEL_NAME)
 
-                        # for record in value:
-                        #     rows = pd.Series(record.value)
-                        #     y = rows.pop(LABEL_NAME)
-                        #     self.__model.fit(rows, y)
-
                     time.sleep(1)
             except:
                 print("Unexpect Error Happen while running model training")
@@ -281,8 +238,6 @@ class OnlineMachineLearningServer:
                 receive_data = msg.value
 
                 row = pd.Series(receive_data)
-                row.drop('DailyReturn', inplace=True)
-                row.drop('Date', inplace=True)
                 y = row.pop(LABEL_NAME)
 
                 if row is None or y is None:
@@ -387,7 +342,7 @@ class OnlineMachineTrainerRunner:
 
     def start_online_ml_server(self):
         print("start online machine learning server")
-        self._future = self._pool.submit(self.__server.run, consumer_run_mode='polling', label_name='Y')
+        self._future = self._pool.submit(self.__server.run, consumer_run_mode='polling', label_name='LABEL')
 
     def start_persist_model(self):
         self._future = self._pool.submit(self.__server.run_model_persist)
@@ -411,9 +366,9 @@ if __name__ == "__main__":
     runner = OnlineMachineTrainerRunner()
     # runner.load_model(load_model_path='../../model_store/pretrain_model_persist/testing_hoeffding_tree_pretrain_model.pickle')
 
-    # setting up model
+    # HoeffdingTree Classifier setting
     model_hyper_params = {
-        'max_depth': 3,
+        'max_depth': 5,
         'split_criterion': 'gini',
         'split_confidence': 1e-2,
         'grace_period': 10,
@@ -423,9 +378,20 @@ if __name__ == "__main__":
     ensemble_model_params = {
         'n_models': 100
     }
-
     runner.init_model(RiverClassifier(model_class=tree.HoeffdingAdaptiveTreeClassifier, model_hyper_params=model_hyper_params))
     runner.ensemble_model(ensemble_model_params)
+
+
+    # # HoeffdingTree Regressor setting
+    # model_hyper_params = {
+    #     'grace_period': 50,
+    #     'leaf_prediction': 'adaptive',
+    #     'model_selector_decay': 0.3,
+    #     'seed': 0
+    # }
+    # runner.init_model(RiverRegressor(model_class=tree.HoeffdingAdaptiveTreeRegressor, model_hyper_params=model_hyper_params))
+    #
+
     runner.start_online_ml_server()
     runner.start_persist_model()
     # time.sleep(1000)

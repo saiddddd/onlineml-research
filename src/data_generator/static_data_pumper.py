@@ -42,7 +42,7 @@ class DataPumper:
         data_to_send = None
         if isinstance(data, str):
             data_to_send = bytes(data, 'utf-8')
-        elif isinstance(data, pd.Series):
+        elif isinstance(data, pd.Series) or isinstance(data, pd.DataFrame):
             data_to_send = bytes(str(data.to_json()), 'utf-8')
         elif isinstance(data, bytearray):
             data_to_send = data
@@ -108,6 +108,8 @@ class DataPumper:
                 x_axis_name = sending_offset
                 if distinct_time is not None:
                     x_axis_name = distinct_time[sending_offset]
+                    sub_df_to_send.drop(columns=[time_series_column_name], inplace=True)
+
 
                 df_to_json = sub_df_to_send.to_json()
                 wrap_to_send = {
@@ -123,8 +125,9 @@ class DataPumper:
                  Sending back to kafka to do online model training
                 ===================================================
                 '''
-                for index, row in tqdm(sub_df_to_send.iterrows(), total=sub_df_to_send.shape[0]):
-                    self.send_to_kafka('testTopic', row)
+                # for index, row in tqdm(sub_df_to_send.iterrows(), total=sub_df_to_send.shape[0]):
+                #     self.send_to_kafka('testTopic', row)
+                self.send_to_kafka('testTopic', sub_df_to_send)
 
                 '''
                 ==============================
@@ -144,25 +147,75 @@ class DataPumper:
 
 if __name__ == "__main__":
 
-    pumper = DataPumper()
-    pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
-    # pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data.csv")
-    pumper.load_data_from_csv("../../data/stock_index_predict/eda_TW50_top30_append.csv")
-    pumper.show_df()
+
+    def run_dummy_data():
+
+        print("Running Dummy Dataset")
+
+        pumper = DataPumper()
+        pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
+        pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data_testing.csv")
+
+        # # training
+        # pumper.run_dataset_pump_to_kafka(0, 5000)
+
+        # time.sleep(100)
+
+        # prediction
+        pumper.run_dataset_pump_to_inference_api(
+            'http://127.0.0.1:5000/model/validation/',
+            9000,
+            end_row=None,
+            batch_size=200,
+            label_name='LABEL',
+        )
 
 
-    # training
-    # pumper.run_dataset_pump_to_kafka(80000, 99925)
+    def run_stock_data():
+
+        print("Running Stock Dataset")
+        pumper = DataPumper()
+        pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
+        pumper.load_data_from_csv("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
+
+        # # training
+        # pumper.run_dataset_pump_to_kafka(0, 5000)
+
+        # time.sleep(100)
+
+        # prediction
+        pumper.run_dataset_pump_to_inference_api(
+            'http://127.0.0.1:5000/model/validation/',
+            9000,
+            end_row=None,
+            batch_size=200,
+            label_name='LABEL',
+            time_series_column_name='Date'
+        )
+
+
+    # run_dummy_data()
+    run_stock_data()
+
+    # pumper = DataPumper()
+    # pumper.init_kafka_producer(bootstrap_servers='localhost:9092')
+    # # pumper.load_data_from_csv("../../playground/quick_study/dummy_toy/dummy_data_testing.csv")
+    # pumper.load_data_from_csv("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
+    # pumper.show_df()
     #
     #
-    # time.sleep(100)
-
-    # prediction
-    pumper.run_dataset_pump_to_inference_api(
-        'http://127.0.0.1:5000/model/validation/',
-        99925,
-        end_row=None,
-        batch_size=30,
-        label_name='LABEL',
-        time_series_column_name='Date'
-    )
+    # # # training
+    # # pumper.run_dataset_pump_to_kafka(0, 5000)
+    #
+    #
+    # # time.sleep(100)
+    #
+    # # prediction
+    # pumper.run_dataset_pump_to_inference_api(
+    #     'http://127.0.0.1:5000/model/validation/',
+    #     9000,
+    #     end_row=None,
+    #     batch_size=200,
+    #     label_name='LABEL',
+    #     time_series_column_name='Date'
+    # )
