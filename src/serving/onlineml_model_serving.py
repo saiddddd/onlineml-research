@@ -12,49 +12,9 @@ import json
 from sklearn.ensemble import RandomForestClassifier
 # Model validation related
 from sklearn.metrics import recall_score, accuracy_score, f1_score
-# Metrics render via web page
-from dash import Dash, html, dcc
-from dash.dependencies import Input, Output
-import plotly.graph_objects as go
 
 from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
-
-from matplotlib import pyplot as plt
-
-
-def draw_analyze_proba_distribution(pred_proba: np.array, is_target_list: pd.Series, fig_save_path: str):
-
-    pred_proba_result_true_class = pred_proba[is_target_list == 1]
-    pred_proba_result_false_class = pred_proba[is_target_list == 0]
-
-    fig = plt.figure(figsize=(14, 4))
-    fig.suptitle('{}pred_proba_distribution'.format(''))
-    plt.subplot(131)
-    plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
-    plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
-    plt.yscale('log')
-    plt.title('stacking prediction proba in both class')
-    plt.xlabel('pred proba')
-    plt.ylabel('statistics')
-    plt.grid()
-    plt.legend()
-    plt.subplot(132)
-    plt.hist(pred_proba_result_true_class, bins=50)
-    plt.yscale('log')
-    plt.title('Y True class prediction proba. dist.')
-    plt.xlabel('pred proba')
-    plt.ylabel('statistics')
-    plt.grid()
-    plt.subplot(133)
-    plt.hist(pred_proba_result_false_class, bins=50)
-    plt.yscale('log')
-    plt.title('Y False class prediction proba. dist.')
-    plt.xlabel('pred proba')
-    plt.ylabel('statistics')
-    plt.grid()
-    # fig.savefig(fig_save_path)
-    # plt.savefig(fig_save_path)
-    return fig
+from tools.model_perform_visualization import PredictionProbabilityDist
 
 
 class OnlineMachineLearningModelServing:
@@ -86,25 +46,25 @@ class OnlineMachineLearningModelServing:
         )
         # df_batch_train = pd.read_csv("../../data/stock_index_predict/eda_TW50_top30_append_2010_2017.csv")
         # df_batch_train.drop(['Date', 'DailyReturn'], axis=1, inplace=True)
-        df_batch_train = pd.read_csv("../../playground/quick_study/dummy_toy/dummy_data_training.csv")
-        y = df_batch_train.pop('Y')
-        self.__batch_model.fit(df_batch_train, y)
+        # df_batch_train = pd.read_csv("../../playground/quick_study/dummy_toy/dummy_data_training.csv")
+        # y = df_batch_train.pop('LABEL')
+        # self.__batch_model.fit(df_batch_train, y)
 
         # variable for metrics display
         self.__x_axis = []
         self.__appending_acc = []
         self.__appending_recall = []
         self.__appending_f1 = []
+        self.__appending_mae = []
 
         # variable for metrics display
         self.__batch_appending_acc = []
         self.__batch_appending_f1 = []
+        self.__batch_appending_mae = []
 
         # last prediction probability result and target answer
         self.__last_pred_proba = None
         self.__last_y_true = None
-
-        self.dash_display = Dash(__name__+'dash')
 
         @self.app.route('/model/', methods=['POST'])
         def load_model_api():
@@ -137,22 +97,22 @@ class OnlineMachineLearningModelServing:
             finally:
                 print("Finish of handling this load model request")
 
-        @self.app.route('/model/inference/', methods=['POST'])
-        def model_inference_api() -> Response:
-            """
-            Model inference api, request contain dataset which want to do predict
-            label is not expect to be access in this api.
-            :return: http response with prediction result in payload in json format
-            """
-            try:
-                x_axis_item, df = extract_http_data_payload(request)
-                proba_list, is_target_list = self.inference(df)
-                return Response(json.dumps(proba_list), status=200, headers={'content-type': 'application/json'})
-
-            except Exception as e:
-                e.with_traceback()
-                print("can not extract data, please check!")
-                abort(404)
+        # @self.app.route('/model/inference/', methods=['POST'])
+        # def model_inference_api() -> Response:
+        #     """
+        #     Model inference api, request contain dataset which want to do predict
+        #     label is not expect to be access in this api.
+        #     :return: http response with prediction result in payload in json format
+        #     """
+        #     try:
+        #         x_axis_item, df = extract_http_data_payload(request)
+        #         proba_list, is_target_list = self.inference(df)
+        #         return Response(json.dumps(proba_list), status=200, headers={'content-type': 'application/json'})
+        #
+        #     except Exception as e:
+        #         e.with_traceback()
+        #         print("can not extract data, please check!")
+        #         abort(404)
 
 
         @self.app.route('/model/validation/', methods=['POST'])
@@ -170,10 +130,18 @@ class OnlineMachineLearningModelServing:
                 self.__last_pred_proba = proba_list
                 self.__last_y_true = y
 
+                # ========================================= #
+                # Performing prediction probability quality #
+                # ========================================= #
+                # # drawing prediction probability distribution and saving figure
                 pred_proba_nparray = np.array(proba_list)
                 time_stamp = datetime.datetime.now().strftime('%HH-%MM-%SS')
-                draw_fig = draw_analyze_proba_distribution(pred_proba_nparray, y, '../../output_plot/web_checker_historical_check/model_pred_proba_distribution/pred_proba_check_{}.png'.format(time_stamp))
-                #saving figure
+
+                model_pred_dist_drawer = PredictionProbabilityDist(
+                    pred_proba_nparray,
+                    y
+                )
+                draw_fig = model_pred_dist_drawer.draw_proba_dist_by_true_false_class_seperated()
                 draw_fig.savefig('../../output_plot/web_checker_historical_check/model_pred_proba_distribution/pred_proba_check_{}.png'.format(time_stamp))
                 draw_fig.savefig('../../output_plot/web_checker_online_display/online_pred_proba_distribution/pred_proba_check.png')
 
@@ -201,8 +169,6 @@ class OnlineMachineLearningModelServing:
 
                 print("batch model prediction Accuracy: {}\n f1 score: {}\n".format(batch_acc, batch_f1))
 
-
-
                 return Response(
                     json.dumps(
                         {"accuracy": acc, "recall-rate": recall, "f1 score": f1}
@@ -211,31 +177,13 @@ class OnlineMachineLearningModelServing:
                     headers={'content-type': 'application/json'}
                 )
 
-
             except Exception as e:
                 e.with_traceback()
                 print("can not extract data, please check!")
                 abort(404)
 
-        # Multiple components can update everytime interval gets fired.
-        @self.dash_display.callback(Output('live-update-graph', 'figure'),
-                                    Input('interval-component', 'n_intervals'))
-        def update_graph_live(n):
-            x_list = self.get_x_axis()
-            y_list = self.get_accuracy()
-            fig_acc = go.Figure()
-            fig_acc.add_trace(go.Scatter(
-                x=x_list, y=y_list, name='Accuracy',
-                line=dict(color='firebrick', width=4)
-            ))
-            fig_acc.update_layout(
-                title='Accuracy Trend Plot',
-                xaxis_title='Iteration(s)',
-                yaxis_title='Accuracy'
-            )
-            return fig_acc
 
-        def extract_http_data_payload(request_from_http: request) -> pd.DataFrame:
+        def extract_http_data_payload(request_from_http: request):
             """
             extract dataframe from http request
             :param request_from_http: http requests
@@ -265,11 +213,17 @@ class OnlineMachineLearningModelServing:
     def get_f1_score(self):
         return self.__appending_f1
 
+    def get_mae(self):
+        return self.__appending_mae
+
     def get_batch_acc(self):
         return self.__batch_appending_acc
 
     def get_batch_f1(self):
         return self.__batch_appending_f1
+
+    def get_batch_mae(self):
+        return self.__batch_appending_mae
 
     def get_recall_rate(self):
         return self.__appending_recall
@@ -282,46 +236,6 @@ class OnlineMachineLearningModelServing:
 
     def run(self):
         self._future = self._pool.submit(self.app.run)
-        # self.app.run()
-
-    def run_dash(self):
-
-        colors = {
-            'background': '#111111',
-            'text': '#7FDBFF'
-        }
-
-        self.dash_display.layout = html.Div(
-            style={'backgroundColor': colors['background']},
-            children=[
-                html.H1(
-                    children='Online Machine Learning Checker',
-                    style={
-                        'textAlign': 'center',
-                        'color': colors['text']
-                    }
-                ),
-                html.Div(
-                    children=
-                    '''
-                    Model Performance live-updating monitor
-                    ''',
-                    style={
-                        'textAlign': 'center',
-                        'color': colors['text']
-                    }
-                ),
-                dcc.Graph(id='live-update-graph'),
-                dcc.Interval(
-                    id='interval-component',
-                    interval=1 * 1000,  # in milliseconds
-                    n_intervals=0
-                )
-            ])
-
-        # self.dash_display.run_server()
-        self._future = self._pool.submit(self.dash_display.run_server)
-
 
     def load_model(self, path: str):
         """
@@ -366,95 +280,4 @@ class OnlineMachineLearningModelServing:
                 e.with_traceback()
 
         return pred_target_proba, pred_is_target
-
-
-#
-# class ModelPerformanceMonitor:
-#
-#     # Design in Singleton Pattern
-#     _instance = None
-#
-#     @staticmethod
-#     def get_instance():
-#
-#         if ModelPerformanceMonitor._instance is None:
-#             ModelPerformanceMonitor._instance = ModelPerformanceMonitor()
-#         return ModelPerformanceMonitor._instance
-#
-#     def __init__(self):
-#
-#         self._model_ml = OnlineMachineLearningModelServing.get_instance()
-#         self.dash_display = Dash(__name__ + 'dash')
-#
-#         # Multiple components can update everytime interval gets fired.
-#         @self.dash_display.callback(Output('live-update-graph', 'figure'),
-#                                     Input('interval-component', 'n_intervals'))
-#         def update_graph_live(n):
-#             x_list = self._model_ml.get_x_axis()
-#             y_list = self._model_ml.get_accuracy()
-#             fig_acc = go.Figure()
-#             fig_acc.add_trace(go.Scatter(
-#                 x=x_list, y=y_list, name='Accuracy',
-#                 line=dict(color='firebrick', width=4)
-#             ))
-#             fig_acc.update_layout(
-#                 title='Accuracy Trend Plot',
-#                 xaxis_title='Iteration(s)',
-#                 yaxis_title='Accuracy'
-#             )
-#             return fig_acc
-#
-#     def run_dash(self):
-#
-#         colors = {
-#             'background': '#111111',
-#             'text': '#7FDBFF'
-#         }
-#
-#         self.dash_display.layout = html.Div(
-#             style={'backgroundColor': colors['background']},
-#             children=[
-#                 html.H1(
-#                     children='Online Machine Learning Checker',
-#                     style={
-#                         'textAlign': 'center',
-#                         'color': colors['text']
-#                     }
-#                 ),
-#                 html.Div(
-#                     children=
-#                     '''
-#                     Model Performance live-updating monitor
-#                     ''',
-#                     style={
-#                         'textAlign': 'center',
-#                         'color': colors['text']
-#                     }
-#                 ),
-#                 dcc.Graph(id='live-update-graph'),
-#                 dcc.Interval(
-#                     id='interval-component',
-#                     interval=1 * 1000,  # in milliseconds
-#                     n_intervals=0
-#                 )
-#             ])
-#
-#         self.dash_display.run_server()
-#         # self._future = self._pool.submit(self.dash_display.run_server)
-#
-#
-#
-#
-# if __name__ == '__main__':
-#
-#     online_model_serving = OnlineMachineLearningModelServing.get_instance()
-#     online_model_serving.run()
-#     model_checker = ModelPerformanceMonitor.get_instance()
-#     model_checker.run_dash()
-#     # online_model_serving.run_dash()
-
-
-
-
-
 

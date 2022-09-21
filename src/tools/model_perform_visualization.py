@@ -1,25 +1,26 @@
 from matplotlib import pyplot as plt
 from matplotlib import dates as mdates
 
+
 class PredictionProbabilityDist:
     
-    def __init__(self, pred_proba_result_list : list, target_list : list):
+    def __init__(self, pred_proba_result_list, target_list):
         
-        plt.clf()
-        plt.cla()
+        # plt.clf()
+        # plt.cla()
         
         self._pred_proba_result_list = pred_proba_result_list
         self._target_list = target_list
         
     def draw_proba_dist_by_true_false_class_seperated(self):
 
-        topic_str=''
+        topic_str = ''
         
         pred_proba_result_true_class = self._pred_proba_result_list[self._target_list == 1]
         pred_proba_result_false_class = self._pred_proba_result_list[self._target_list == 0]
         
-        plt.figure(figsize=(14, 4))
-        plt.suptitle('{}pred_proba_distribution'.format(topic_str))
+        fig = plt.figure(figsize=(14, 4))
+        fig.suptitle('{}pred_proba_distribution'.format(topic_str))
         plt.subplot(131)
         plt.hist(pred_proba_result_true_class, bins=50, alpha=0.5, label='Y True')
         plt.hist(pred_proba_result_false_class, bins=50, alpha=0.5, label='Y False')
@@ -43,6 +44,8 @@ class PredictionProbabilityDist:
         plt.xlabel('pred proba')
         plt.ylabel('statistics')
         plt.grid()
+
+        return fig
         
     def show_plt(self):
         plt.show
