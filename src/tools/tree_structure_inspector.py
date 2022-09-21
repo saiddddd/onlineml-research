@@ -1,22 +1,29 @@
 import time
 
 
-class HoeffdingEnsembleTreeInspector:
+class TreeInspector:
+
+    def __init__(self, model):
+        self._model = model
+
+    def update_model(self, model):
+        self._model = model
+
+    def draw_tree(self, output_fig_dir='', fig_file_name=''):
+        tree = self._model
+
+        g = tree.draw()
+        g.render(output_fig_dir + fig_file_name+"_tree", format='png')
+
+
+class HoeffdingEnsembleTreeInspector(TreeInspector):
 
     def __init__(self, model):
 
-        self.__model = model
-
-    def update_model(self, model):
-        """
-        updated inspector's model by provided
-        :param model:
-        :return:
-        """
-        self.__model = model
+        super().__init__(model=model)
 
     def draw_tree(self, tree_index=0, output_fig_dir='', fig_file_name=''):
-        trees = self.__model.models
+        trees = self._model.models
         timestamp = time.time()
 
         if len(fig_file_name) == 0:
@@ -33,6 +40,6 @@ class HoeffdingEnsembleTreeInspector:
 
     def get_tree_g(self, tree_index: int):
 
-        trees = self.__model.models
+        trees = self._model.models
         return trees[tree_index].draw()
 

@@ -15,7 +15,7 @@ from concurrent import futures
 from river import tree
 from river import ensemble
 
-from tools.tree_structure_inspector import HoeffdingEnsembleTreeInspector
+from tools.tree_structure_inspector import TreeInspector, HoeffdingEnsembleTreeInspector
 from tools.model import RiverClassifier, RiverRegressor, Model
 
 
@@ -31,6 +31,7 @@ class OnlineMachineLearningServer:
         self.__trained_event_counter = 0
 
         self._tree_inspector = HoeffdingEnsembleTreeInspector(self.__model)
+        # self._tree_inspector = TreeInspector(self.__model)
 
         self._init_kafka_consumer(
             connection_try_times=3
@@ -162,8 +163,14 @@ class OnlineMachineLearningServer:
                 print("Model Persisting Error, can not save model into file {}. Please check!".format(model_persist_file))
 
     def tree_inspect_and_dump(self, *args, **kwargs):
-
-        self._tree_inspector.update_model(self.__model)
+        """
+        Function to draw tree structure and save the figure to specified location.
+        Have to check the model type, is single tree or ensemble model
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        self._tree_inspector.update_model(self.__model.get_model())
         self._tree_inspector.draw_tree(**kwargs)
 
 
@@ -370,7 +377,7 @@ if __name__ == "__main__":
     model_hyper_params = {
         'max_depth': 5,
         'split_criterion': 'gini',
-        'split_confidence': 1e-2,
+        # 'split_confidence': 1e-2,
         'grace_period': 10,
         'seed': 0
     }
@@ -390,7 +397,7 @@ if __name__ == "__main__":
     #     'seed': 0
     # }
     # runner.init_model(RiverRegressor(model_class=tree.HoeffdingAdaptiveTreeRegressor, model_hyper_params=model_hyper_params))
-    #
+
 
     runner.start_online_ml_server()
     runner.start_persist_model()
